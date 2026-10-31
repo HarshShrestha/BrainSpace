@@ -1,30 +1,39 @@
-import mongoose, { Schema, Types } from "mongoose"
+import mongoose, { Schema, Types } from "mongoose";
+import { User } from "./user.model.js";
 
-const contentTypes = ["image", "video", "article", "audio"]
+const contentTypes = ["image", "video", "article", "audio"];
+
 const contentSchema = new Schema({
-    link : {
-        type : String,
-        required : true
+    link: {
+        type: String,
+        required: true
     },
-    type : {
-        type : String,
-        enum : contentTypes,
-        required : true
+    type: {
+        type: String,
+        enum: contentTypes,
+        required: true
     },
-    title : {
-        type : String,
-        required : true
+    title: {
+        type: String,
+        required: true
     },
-    tags : [{
-        type : Types.ObjectId,
-        ref : "Tag"
+    tags: [{
+        type: Types.ObjectId,
+        ref: "Tag"
     }],
-    userId : {
-        type : Types.ObjectId,
-        ref : "User",
-        required : true
+    userId: {
+        type: Types.ObjectId,
+        ref: "User",
+        required: true
     }
-},{timestamps : true})
+}, { timestamps: true });
 
+contentSchema.pre('save', async function () {
+    const user = await User.findById(this.userId);
 
-export const Content = mongoose.model("Content", contentSchema)
+    if (!user) {
+        throw new Error('User does not exist');
+    }
+});
+
+export const Content = mongoose.model("Content", contentSchema);
