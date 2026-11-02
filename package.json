@@ -12,6 +12,8 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "nodemon": "^3.1.14",
     "typescript": "^7.0.2"
   },
