@@ -12,7 +12,7 @@ beforeAll(async () => {
   const uri = process.env.TEST_MONGODB_URI || (mongo = await MongoMemoryServer.create()).getUri();
   await mongoose.connect(uri, { dbName: `brainspace_test_${randomUUID().replaceAll('-', '')}` });
 }, 120000);
-afterAll(async () => { await mongoose.connection.dropDatabase(); await mongoose.disconnect(); await mongo?.stop(); });
+afterAll(async () => { if (mongoose.connection.readyState === 1) await mongoose.connection.dropDatabase(); await mongoose.disconnect(); await mongo?.stop(); });
 describe('BrainSpace API', () => {
   it('rejects anonymous access and invalid registrations', async () => {
     expect((await request(app).get('/api/content')).status).toBe(401);
@@ -50,7 +50,10 @@ describe('BrainSpace API', () => {
   it('deletes content, logs out, and rejects wrong credentials', async () => {
     expect((await alice.delete(`/api/content/${itemId}`)).status).toBe(200);
     expect((await alice.get('/api/content')).body.data).toHaveLength(0);
+    const signedIn = await request(app).post('/api/auth/login').send({ username: 'alice', password: 'correct horse battery' });
+    const stolenCookie = signedIn.headers['set-cookie'][0].split(';')[0];
     await alice.post('/api/auth/logout'); expect((await alice.get('/api/auth/me')).status).toBe(401);
+    expect((await request(app).get('/api/auth/me').set('Cookie', stolenCookie)).status).toBe(401);
     expect((await alice.post('/api/auth/login').send({ username: 'alice', password: 'wrong password' })).status).toBe(401);
     expect((await alice.post('/api/auth/login').send({ username: 'alice', password: 'correct horse battery' })).status).toBe(200);
   });

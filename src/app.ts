@@ -8,7 +8,14 @@ import users from './routes/user.routes.js';
 import content from './routes/content.routes.js';
 import shares from './routes/share.routes.js';
 const app = express();
-app.disable('x-powered-by'); app.use(helmet());
+app.disable('x-powered-by');
+// Set only when the exact number of trusted reverse proxies is known.
+if (process.env.TRUST_PROXY_HOPS) {
+  const hops = Number(process.env.TRUST_PROXY_HOPS);
+  if (!Number.isInteger(hops) || hops < 1 || hops > 10) throw new Error('TRUST_PROXY_HOPS must be an integer from 1 to 10');
+  app.set('trust proxy', hops);
+}
+app.use(helmet());
 const allowedOrigins = () => (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(v => v.trim()).filter(Boolean);
 app.use(cors({ origin(origin, cb) { cb(null, !origin || allowedOrigins().includes(origin)); }, credentials: true }));
 // Reject cross-origin state-changing requests, including form-based CSRF.

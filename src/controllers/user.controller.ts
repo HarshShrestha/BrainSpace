@@ -16,11 +16,12 @@ export const signup = asyncHandler(async (req, res) => {
 });
 export const login = asyncHandler(async (req, res) => {
   const data = credentials.parse(req.body);
-  const user = await User.findOne({ username: data.username }).select('+password');
+  const user = await User.findOne({ username: data.username }).select('+password +tokenVersion');
   if (!user || !await user.isPasswordCorrect(data.password)) throw new ApiError(401, 'Invalid username or password');
   res.cookie('accessToken', user.generateAccessToken(), cookieOptions()).json({ success: true, data: { id: user.id, username: user.username } });
 });
-export const logout = asyncHandler(async (_req, res) => {
+export const logout = asyncHandler(async (req, res) => {
+  await User.updateOne({ _id: req.userId }, { $inc: { tokenVersion: 1 } });
   res.clearCookie('accessToken', { ...cookieOptions(), maxAge: undefined }).json({ success: true, data: null });
 });
 export const me = asyncHandler(async (req, res) => {
