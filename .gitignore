@@ -1,2 +1,23 @@
+# Dependencies and generated build output
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+*.log
+
+# Environment and secrets
 .env
-node_modules
+.env.*
+!.env.example
+
+# Local AI coding instructions and internal development notes
+AGENTS.md
+GEMINI.md
+CLAUDE.md
+.agents/
+.claude/
+.gemini/
+.cursor/
+PROJECT_ANALYSIS.md
