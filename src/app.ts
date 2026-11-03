@@ -8,6 +8,8 @@ import users from "./routes/user.routes.js";
 import content from "./routes/content.routes.js";
 import shares from "./routes/share.routes.js";
 import assistant from "./routes/assistant.routes.js";
+import folders from "./routes/folder.routes.js";
+import received from "./routes/received-share.routes.js";
 const app = express();
 app.disable("x-powered-by");
 // Set only when the exact number of trusted reverse proxies is known.
@@ -53,6 +55,8 @@ app.use("/api/auth", users);
 app.use("/api/content", content);
 app.use("/api/share", shares);
 app.use("/api/assistant", assistant);
+app.use("/api/folders", folders);
+app.use("/api/received-shares", received);
 app.use((_req, res) =>
   res.status(404).json({ success: false, message: "Not found" }),
 );

@@ -21,6 +21,7 @@ const schema = new Schema(
         },
       ],
     },
+    folderId: { type: Schema.Types.ObjectId, ref: "Folder", default: null },
     userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -31,4 +32,5 @@ const schema = new Schema(
   { timestamps: true },
 );
 schema.index({ userId: 1, createdAt: -1 });
+schema.index({ userId: 1, folderId: 1 });
 export const Content = mongoose.model("Content", schema);

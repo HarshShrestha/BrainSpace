@@ -65,19 +65,82 @@ describe("BrainSpace API", () => {
           .send({ title: "Bad", link: "javascript:alert(1)", type: "article" })
       ).status,
     ).toBe(400);
-    const result = await alice
-      .post("/api/content")
-      .send({
-        title: "A useful article",
-        link: "https://example.com/story",
-        type: "article",
-        tags: ["Ideas", "ideas"],
-      });
+    const result = await alice.post("/api/content").send({
+      title: "A useful article",
+      link: "https://example.com/story",
+      type: "article",
+      tags: ["Ideas", "ideas"],
+    });
     expect(result.status).toBe(201);
     itemId = result.body.data._id;
     expect(result.body.data.tags).toHaveLength(1);
     expect((await alice.get("/api/content")).body.data).toHaveLength(1);
     expect((await bob.get("/api/content")).body.data).toHaveLength(0);
+  });
+  it("organizes content in owned folders without losing it", async () => {
+    expect((await request(app).get("/api/folders")).status).toBe(401);
+    const folder = await alice.post("/api/folders").send({ name: "Research" });
+    expect(folder.status).toBe(201);
+    const id = folder.body.data._id;
+    expect(
+      (await bob.patch(`/api/content/${itemId}/folder`).send({ folderId: id }))
+        .status,
+    ).toBe(404);
+    const foreign = await bob.post("/api/folders").send({ name: "Private" });
+    expect(
+      (
+        await alice
+          .patch(`/api/content/${itemId}/folder`)
+          .send({ folderId: foreign.body.data._id })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await alice
+          .patch(`/api/content/${itemId}/folder`)
+          .send({ folderId: id })
+      ).body.data.folderId,
+    ).toBe(id);
+    expect((await alice.delete(`/api/folders/${id}`)).status).toBe(409);
+    expect(
+      (
+        await alice
+          .patch(`/api/content/${itemId}/folder`)
+          .send({ folderId: null })
+      ).status,
+    ).toBe(200);
+    expect((await alice.delete(`/api/folders/${id}`)).status).toBe(200);
+    expect((await alice.get("/api/content")).body.data).toHaveLength(1);
+  });
+  it("saves received links privately and enforces revocation and isolation", async () => {
+    const token = (await alice.post("/api/share")).body.data.token;
+    const url = `https://brain.example/shared/${token}`;
+    expect(
+      (await alice.post("/api/received-shares").send({ url })).status,
+    ).toBe(400);
+    expect(
+      (
+        await bob
+          .post("/api/received-shares")
+          .send({ url: "https://evil.example/bad" })
+      ).status,
+    ).toBe(400);
+    const saved = await bob.post("/api/received-shares").send({ url });
+    expect(saved.status).toBe(201);
+    const id = saved.body.data.id;
+    const entries = (await bob.get("/api/received-shares")).body.data;
+    expect(entries[0].username).toBe("alice");
+    expect(JSON.stringify(entries)).not.toContain(token);
+    expect(
+      (await bob.get(`/api/received-shares/${id}`)).body.data.content,
+    ).toHaveLength(1);
+    expect((await alice.get(`/api/received-shares/${id}`)).status).toBe(404);
+    await alice.post("/api/share");
+    expect((await bob.get(`/api/received-shares/${id}`)).status).toBe(404);
+    expect((await bob.get("/api/received-shares")).body.data[0].available).toBe(
+      false,
+    );
+    expect((await bob.delete(`/api/received-shares/${id}`)).status).toBe(200);
   });
   it("enforces ownership on delete", async () => {
     expect((await bob.delete(`/api/content/${itemId}`)).status).toBe(404);
