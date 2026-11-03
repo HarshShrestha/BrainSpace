@@ -1,5 +1,5 @@
 import { Spark, Icon } from "../../components/Icons";
-import type { Content } from "../../types";
+import type { Content, Folder } from "../../types";
 const labels = {
   article: "Article / document",
   video: "Video",
@@ -16,11 +16,15 @@ export function ContentList({
   items,
   onDelete,
   onIndex,
+  folders,
+  onMove,
   emptyMessage = "Nothing here yet. Save a link to start building your space.",
 }: {
   items: Content[];
   onDelete?: (id: string) => void;
   onIndex?: (item: Content) => void;
+  folders?: Folder[];
+  onMove?: (id: string, folderId: string | null) => void;
   emptyMessage?: string;
 }) {
   if (!items.length)
@@ -82,6 +86,23 @@ export function ContentList({
                 <span className="indexed-indicator">Indexed</span>
               )}
             </div>
+          )}
+          {onMove && (
+            <label className="move-control">
+              <span className="sr-only">Move {item.title} to folder</span>
+              <select
+                aria-label={`Move ${item.title} to folder`}
+                value={item.folderId || ""}
+                onChange={(e) => onMove(item._id, e.target.value || null)}
+              >
+                <option value="">No folder</option>
+                {folders?.map((folder) => (
+                  <option key={folder._id} value={folder._id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
           <div className="card-bottom">
             <div className="tags">

@@ -5,6 +5,8 @@ import type {
   User,
   RagStatus,
   RagAnswer,
+  Folder,
+  ReceivedShare,
 } from "../types";
 export class ApiError extends Error {
   constructor(
@@ -53,6 +55,24 @@ export const api = {
   add: (input: ContentInput) => post<Content>("/content", input),
   remove: (id: string) =>
     request<null>(`/content/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  folders: () => request<Folder[]>("/folders"),
+  createFolder: (name: string) => post<Folder>("/folders", { name }),
+  deleteFolder: (id: string) =>
+    request<null>(`/folders/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  moveContent: (id: string, folderId: string | null) =>
+    request<Content>(`/content/${encodeURIComponent(id)}/folder`, {
+      method: "PATCH",
+      body: JSON.stringify({ folderId }),
+    }),
+  receivedShares: () => request<ReceivedShare[]>("/received-shares"),
+  saveReceivedShare: (url: string) =>
+    post<{ id: string }>("/received-shares", { url }),
+  openReceivedShare: (id: string) =>
+    request<SharedBrain>(`/received-shares/${encodeURIComponent(id)}`),
+  removeReceivedShare: (id: string) =>
+    request<null>(`/received-shares/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
   share: () => post<{ token: string }>("/share"),
   revoke: () => request<null>("/share", { method: "DELETE" }),
   assistantStatus: () => request<RagStatus>("/assistant/status"),

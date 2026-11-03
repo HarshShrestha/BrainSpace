@@ -73,8 +73,8 @@ export function AssistantPanel({ revision }: { revision: number }) {
           </p>
         ) : status.compatible === 0 ? (
           <p className="assistant-hint">
-            Index a saved source to begin. Open a card below and choose “Index
-            for AI”.
+            Index a saved source to begin. Choose “Index for AI” beside a source
+            in the sidebar.
           </p>
         ) : (
           <p className="assistant-hint">

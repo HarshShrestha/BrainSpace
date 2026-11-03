@@ -30,9 +30,9 @@ const env = {
   NODE_ENV: "production",
   E2E_API_PROXY: `http://127.0.0.1:${apiPort}`,
   RAG_ENABLED: "true",
-  OPENAI_API_KEY: "e2e-test-only",
-  OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
-  OPENAI_CHAT_MODEL: "gpt-4o-mini",
+  GEMINI_API_KEY: "e2e-test-only",
+  GEMINI_EMBEDDING_MODEL: "gemini-embedding-001",
+  GEMINI_CHAT_MODEL: "gemini-3.8-flash",
   PYTHONPATH: path.resolve("tests/python_stubs"),
 };
 const backend = spawn(process.execPath, ["dist/index.js"], {
@@ -89,28 +89,49 @@ try {
   await page.getByLabel("Username").fill("reader");
   await page.getByLabel("Password").fill("strong-example-password");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.getByRole("button", { name: /Add content/ }).waitFor();
-  await page.getByRole("button", { name: /Add content/ }).click();
-  await page.getByLabel("Title").fill("Designing a calmer internet");
-  await page.getByLabel("Link").fill("https://example.com/design");
-  await page.getByLabel(/Tags/).fill("design, inspiration");
-  await page.getByRole("button", { name: "Save to space" }).click();
-  await page
-    .getByRole("link", { name: /Designing a calmer internet/ })
-    .waitFor();
-  for (const item of [
-    { title: "A field guide to ideas", type: "article" },
-    { title: "Notes on creative work", type: "video" },
-    { title: "A quieter way to listen", type: "audio" },
-  ]) {
-    await page.getByRole("button", { name: /Add content/ }).click();
-    await page.getByLabel("Title").fill(item.title);
-    await page.getByLabel("Link").fill("https://example.com/" + item.type);
-    await page.getByLabel("Content type").selectOption(item.type);
+  await page.getByRole("button", { name: "New", exact: true }).waitFor();
+  async function addItem(title, type, tags = "") {
+    await page.getByRole("button", { name: "New", exact: true }).click();
+    await page.getByRole("button", { name: "Add content" }).click();
+    await page.getByLabel("Title").fill(title);
+    await page.getByLabel("Link").fill("https://example.com/" + type);
+    await page.getByLabel("Content type").selectOption(type);
+    if (tags) await page.getByLabel(/Tags/).fill(tags);
     await page.getByRole("button", { name: "Save to space" }).click();
-    await page.getByRole("link", { name: item.title }).waitFor();
+    await page
+      .locator(".content-grid")
+      .getByRole("link", { name: title })
+      .waitFor();
   }
-
+  await addItem(
+    "Designing a calmer internet",
+    "article",
+    "design, inspiration",
+  );
+  await addItem("A field guide to ideas", "article");
+  await addItem("Notes on creative work", "video");
+  await addItem("A quieter way to listen", "audio");
+  await page.getByRole("button", { name: "New", exact: true }).click();
+  await page.getByRole("button", { name: "New folder" }).click();
+  await page.getByLabel("Folder name").fill("Research");
+  await page.getByRole("button", { name: "Create folder" }).click();
+  await page
+    .locator(".folder-card")
+    .getByRole("button", { name: "Research", exact: true })
+    .waitFor();
+  const move = page.getByLabel("Move A field guide to ideas to folder");
+  await move.selectOption({ label: "Research" });
+  await page
+    .locator(".folder-card")
+    .getByRole("button", { name: "Research", exact: true })
+    .click();
+  await page.getByRole("heading", { name: "Research", exact: true }).waitFor();
+  await page
+    .locator(".content-grid")
+    .getByRole("link", { name: "A field guide to ideas" })
+    .waitFor();
+  assert.equal(await page.locator(".content-grid article").count(), 1);
+  await page.locator(".drive-main .back-link").click();
   await page
     .locator("article")
     .filter({
@@ -118,11 +139,6 @@ try {
     })
     .getByRole("button", { name: "Index for AI" })
     .click();
-  if (process.env.RAG_QA_DIR)
-    await page.screenshot({
-      path: path.join(process.env.RAG_QA_DIR, "index-dialog.png"),
-      fullPage: true,
-    });
   await page
     .getByLabel(/Source text/)
     .fill(
@@ -142,13 +158,16 @@ try {
   await page
     .getByText("“The example uses blue cards for each source.”")
     .waitFor();
-  if (process.env.RAG_QA_DIR) {
+  await page
+    .locator(".chat-sidebar")
+    .getByRole("link", { name: "Designing a calmer internet" })
+    .waitFor();
+  if (process.env.RAG_QA_DIR)
     await page.screenshot({
       path: path.join(process.env.RAG_QA_DIR, "desktop-chat.png"),
       animations: "disabled",
     });
-  }
-  await page.getByRole("button", { name: "Close AI assistant" }).click();
+  await page.locator(".chat-sidebar .back-link").click();
   if (process.env.SCREENSHOT_DIR) {
     await mkdir(process.env.SCREENSHOT_DIR, { recursive: true });
     await page.screenshot({
@@ -157,29 +176,49 @@ try {
       animations: "disabled",
     });
   }
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
+  if (process.env.RAG_QA_DIR)
+    await page.screenshot({
+      path: path.join(process.env.RAG_QA_DIR, "dark.png"),
+      animations: "disabled",
+    });
+  await page.reload();
+  await page.getByRole("button", { name: "Switch to light mode" }).waitFor();
+  await page.getByRole("button", { name: "Switch to light mode" }).click();
   await page.getByLabel("Search your content").fill("inspiration");
   assert.equal(
     await page
       .locator(".content-grid")
-      .getByRole("link", { name: /Designing a calmer internet/ })
+      .getByRole("link", { name: "Designing a calmer internet" })
       .count(),
     1,
   );
   await page.getByLabel("Search your content").fill("missing");
-  await page.getByText("No items match your search or filter.").waitFor();
+  await page.getByText("No items match this view.").waitFor();
   await page.getByLabel("Search your content").fill("");
-  await page.getByRole("button", { name: /Share/ }).click();
+  await page.getByRole("button", { name: "Share", exact: true }).click();
   await page.getByRole("button", { name: "Create link", exact: true }).click();
   const url = await page.getByLabel("Share link").inputValue();
   const other = await browser.newContext();
   const visitor = await other.newPage();
-  await visitor.goto(url);
+  await visitor.goto(baseUrl);
+  await visitor.getByRole("button", { name: "Create an account" }).click();
+  await visitor.getByLabel("Username").fill("friend");
+  await visitor.getByLabel("Password").fill("strong-example-password");
+  await visitor.getByRole("button", { name: "Create account" }).click();
+  await visitor.getByRole("button", { name: "Shared with me" }).click();
+  await visitor.getByLabel("Add a shared space").fill(url);
+  await visitor.getByRole("button", { name: "Add link" }).click();
+  await visitor.getByRole("button", { name: "Open", exact: true }).click();
   await visitor
-    .getByRole("link", { name: /Designing a calmer internet/ })
+    .getByRole("link", { name: "Designing a calmer internet" })
     .waitFor();
   await page.getByRole("button", { name: "Revoke link" }).click();
+  await visitor.locator(".drive-main .back-link").click();
   await visitor.reload();
-  await visitor.getByRole("alert").waitFor();
+  await visitor.getByRole("button", { name: "Shared with me" }).click();
+  await visitor.getByText("Unavailable space").waitFor();
   await other.close();
   await page.getByRole("button", { name: "Close" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -190,49 +229,34 @@ try {
       animations: "disabled",
     });
   await page.getByRole("button", { name: "Open AI assistant" }).click();
-  const chatRect = await page
-    .getByRole("dialog", { name: "Ask your space" })
-    .boundingBox();
-  assert.ok(
-    chatRect && chatRect.x >= 0 && chatRect.x + chatRect.width <= 390,
-    "Mobile chat should fit the viewport",
+  await page.getByRole("heading", { name: "Ask your space" }).waitFor();
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    ),
+    false,
+    "Mobile chat should not overflow",
   );
   if (process.env.RAG_QA_DIR)
     await page.screenshot({
       path: path.join(process.env.RAG_QA_DIR, "mobile-chat.png"),
       animations: "disabled",
     });
-  await page.keyboard.press("Escape");
-  assert.equal(
-    await page
-      .getByRole("button", { name: "Open AI assistant" })
-      .getAttribute("aria-expanded"),
-    "false",
-  );
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > window.innerWidth,
-  );
-  assert.equal(
-    overflow,
-    false,
-    "Mobile layout should not overflow horizontally",
-  );
+  await page.locator(".chat-sidebar .back-link").click();
   await page.getByRole("button", { name: /Reindex for AI/ }).click();
   await page.getByRole("button", { name: "Remove AI index" }).click();
   await page.getByRole("button", { name: "Open AI assistant" }).click();
   await page.getByText("0 sources ready").waitFor();
-  await page.getByRole("button", { name: "Close AI assistant" }).click();
+  await page.locator(".chat-sidebar .back-link").click();
   for (const title of [
     "A field guide to ideas",
     "Notes on creative work",
     "A quieter way to listen",
     "Designing a calmer internet",
-  ]) {
+  ])
     await page.getByRole("button", { name: `Delete ${title}` }).click();
-  }
-  await page
-    .getByText("Nothing here yet. Save a link to start building your space.")
-    .waitFor();
+  await page.getByRole("button", { name: "Delete folder Research" }).click();
+  await page.getByRole("button", { name: "Open profile" }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await page.getByLabel("Username").fill("reader");
   await page.getByLabel("Password").fill("strong-example-password");
@@ -240,9 +264,9 @@ try {
     .getByRole("button", { name: /Sign in/ })
     .first()
     .click();
-  await page.getByRole("button", { name: /Add content/ }).waitFor();
+  await page.getByRole("button", { name: "New", exact: true }).waitFor();
   console.log(
-    "E2E passed: signup, capture, indexing, cited chat, unindex, search, share, revoke, delete, sign-in and mobile layout (AI provider stubbed).",
+    "E2E passed: auth, folders, capture, indexed chat, search, theme, received sharing/revocation, deletion, mobile (Gemini stubbed).",
   );
 } finally {
   await browser?.close();

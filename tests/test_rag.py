@@ -97,6 +97,21 @@ class RetrievalTests(unittest.TestCase):
         with self.assertRaises(RagError):
             provider.embed(["hello"])
 
+    @patch("rag.provider.request")
+    @patch.dict("os.environ", {"RAG_ENABLED": "true", "GEMINI_API_KEY": "test-only", "GEMINI_EMBEDDING_MODEL": "gemini-embedding-001", "GEMINI_CHAT_MODEL": "gemini-3.8-flash"})
+    def test_gemini_request_contracts(self, request):
+        request.return_value = {"embeddings": [{"values": [0.5, 0.2]}]}
+        self.assertEqual(provider.embed(["hello"], "RETRIEVAL_QUERY"), [[0.5, 0.2]])
+        path, body = request.call_args.args
+        self.assertEqual(path, "gemini-embedding-001:batchEmbedContents")
+        self.assertEqual(body["requests"][0]["taskType"], "RETRIEVAL_QUERY")
+        self.assertEqual(body["requests"][0]["outputDimensionality"], 768)
+        request.return_value = {"candidates": [{"content": {"parts": [{"text": '{"supported":true}'}]}}]}
+        self.assertTrue(provider.verify("q", "a", ["evidence"]))
+        path, body = request.call_args.args
+        self.assertEqual(path, "gemini-3.8-flash:generateContent")
+        self.assertEqual(body["generationConfig"]["responseFormat"]["text"]["mimeType"], "APPLICATION_JSON")
+
     @patch("rag.worker.verify", return_value=False)
     @patch(
         "rag.worker.generate",

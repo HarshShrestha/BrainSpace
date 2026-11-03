@@ -14,6 +14,7 @@ export interface Content {
   type: ContentType;
   tags: Tag[];
   createdAt: string;
+  folderId?: string | null;
   rag?: { indexedAt?: string; model?: string; sourceType?: "page" | "pasted" };
 }
 export interface ContentInput {
@@ -43,4 +44,15 @@ export interface RagAnswer {
   answer: string;
   sources: RagSource[];
   abstained: boolean;
+}
+
+export interface Folder {
+  _id: string;
+  name: string;
+}
+export interface ReceivedShare {
+  id: string;
+  username: string | null;
+  available: boolean;
+  createdAt: string;
 }
