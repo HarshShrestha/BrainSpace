@@ -14,6 +14,7 @@ export interface Content {
   type: ContentType;
   tags: Tag[];
   createdAt: string;
+  rag?: { indexedAt?: string; model?: string; sourceType?: "page" | "pasted" };
 }
 export interface ContentInput {
   title: string;
@@ -24,4 +25,22 @@ export interface ContentInput {
 export interface SharedBrain {
   username: string;
   content: Content[];
+}
+export interface RagStatus {
+  configured: boolean;
+  indexed: number;
+  compatible: number;
+}
+export interface RagSource {
+  contentId: string;
+  title: string;
+  link: string;
+  quote: string;
+  sourceType?: "page" | "pasted";
+  indexedAt?: string;
+}
+export interface RagAnswer {
+  answer: string;
+  sources: RagSource[];
+  abstained: boolean;
 }

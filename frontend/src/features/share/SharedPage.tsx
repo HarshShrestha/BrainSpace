@@ -1,3 +1,4 @@
+import { Spark } from "../../components/Icons";
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import type { SharedBrain } from "../../types";
@@ -14,7 +15,7 @@ export function SharedPage({ token }: { token: string }) {
   return (
     <main className="shared-page">
       <a className="brand" href="/">
-        <span className="brand-mark">✳</span> brainspace
+        <Spark className="brand-mark" /> brainspace
         <span className="brand-dot">.</span>
       </a>
       <header className="shared-header">

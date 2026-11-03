@@ -1,3 +1,4 @@
+import { Spark } from "../../components/Icons";
 import { useState, type FormEvent } from "react";
 import { useSetRecoilState } from "recoil";
 import { userState } from "../../store/state";
@@ -29,7 +30,7 @@ export function Auth() {
     <main className="auth-layout">
       <section className="auth-intro">
         <div className="brand">
-          <span className="brand-mark">✳</span> brainspace
+          <Spark className="brand-mark" /> brainspace
           <span className="brand-dot">.</span>
         </div>
         <div>

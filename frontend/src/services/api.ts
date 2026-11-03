@@ -1,4 +1,11 @@
-import type { Content, ContentInput, SharedBrain, User } from "../types";
+import type {
+  Content,
+  ContentInput,
+  SharedBrain,
+  User,
+  RagStatus,
+  RagAnswer,
+} from "../types";
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -48,6 +55,17 @@ export const api = {
     request<null>(`/content/${encodeURIComponent(id)}`, { method: "DELETE" }),
   share: () => post<{ token: string }>("/share"),
   revoke: () => request<null>("/share", { method: "DELETE" }),
+  assistantStatus: () => request<RagStatus>("/assistant/status"),
+  indexContent: (id: string, text: string) =>
+    post<{ indexedAt: string; sourceType: string; chunks: number }>(
+      `/assistant/index/${encodeURIComponent(id)}`,
+      { consent: true, ...(text.trim() ? { text } : {}) },
+    ),
+  removeIndex: (id: string) =>
+    request<null>(`/assistant/index/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
+  ask: (question: string) => post<RagAnswer>("/assistant/ask", { question }),
   shared: (token: string) =>
     request<SharedBrain>(`/share/${encodeURIComponent(token)}`),
 };

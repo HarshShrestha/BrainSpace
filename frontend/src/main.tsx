@@ -10,3 +10,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </RecoilRoot>
   </React.StrictMode>,
 );
+
+import "./redesign.css";

@@ -1,11 +1,14 @@
+import { Spark, SearchIcon, GridIcon } from "../../components/Icons";
 import { useEffect, useMemo, useState } from "react";
 import { useRecoilState } from "recoil";
 import { contentState, userState } from "../../store/state";
 import { api } from "../../services/api";
-import type { ContentInput } from "../../types";
+import type { Content, ContentInput } from "../../types";
 import { ContentForm } from "./ContentForm";
 import { ContentList } from "./ContentList";
 import { ShareDialog } from "../share/ShareDialog";
+import { AssistantPanel } from "../assistant/AssistantPanel";
+import { IndexDialog } from "../assistant/IndexDialog";
 export function Workspace() {
   const [user, setUser] = useRecoilState(userState),
     [items, setItems] = useRecoilState(contentState);
@@ -13,7 +16,9 @@ export function Workspace() {
     [filter, setFilter] = useState("all"),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
-    [dialog, setDialog] = useState<"add" | "share" | null>(null);
+    [dialog, setDialog] = useState<"add" | "share" | null>(null),
+    [indexItem, setIndexItem] = useState<Content | null>(null),
+    [revision, setRevision] = useState(0);
   async function load() {
     setLoading(true);
     setError("");
@@ -49,6 +54,7 @@ export function Workspace() {
     try {
       await api.remove(id);
       setItems((old) => old.filter((i) => i._id !== id));
+      setRevision((n) => n + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not delete");
     }
@@ -66,17 +72,17 @@ export function Workspace() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">✳</span> brainspace
+          <Spark className="brand-mark" /> brainspace
           <span className="brand-dot">.</span>
         </div>
         <div className="sidebar-main">
           <div className="eyebrow">YOUR SPACE</div>
           <div className="nav-active">
-            <span>◫</span> All content{" "}
+            <GridIcon /> All content{" "}
             <span className="nav-count">{items.length}</span>
           </div>
           <div className="sidebar-note">
-            <span>✳</span>
+            <Spark />
             <p>A little space for everything worth remembering.</p>
           </div>
         </div>
@@ -119,6 +125,7 @@ export function Workspace() {
               <span>THINGS SAVED</span>
             </div>
           </div>
+          <AssistantPanel revision={revision} />
           <div className="section-rule" />
           <div className="collection-heading">
             <div>
@@ -129,7 +136,9 @@ export function Workspace() {
             </div>
             <div className="controls">
               <label className="search">
-                <span aria-hidden="true">⌕</span>
+                <span aria-hidden="true">
+                  <SearchIcon />
+                </span>
                 <span className="sr-only">Search your content</span>
                 <input
                   value={query}
@@ -168,6 +177,7 @@ export function Workspace() {
             <ContentList
               items={visible}
               onDelete={(id) => void remove(id)}
+              onIndex={setIndexItem}
               emptyMessage={
                 items.length
                   ? "No items match your search or filter."
@@ -181,6 +191,16 @@ export function Workspace() {
         <ContentForm onSave={save} onClose={() => setDialog(null)} />
       )}
       {dialog === "share" && <ShareDialog onClose={() => setDialog(null)} />}
+      {indexItem && (
+        <IndexDialog
+          item={indexItem}
+          onClose={() => setIndexItem(null)}
+          onIndexed={async () => {
+            await load();
+            setRevision((n) => n + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

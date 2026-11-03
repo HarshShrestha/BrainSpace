@@ -1,3 +1,4 @@
+import { Spark } from "../../components/Icons";
 import type { Content } from "../../types";
 const labels = {
   article: "Article / document",
@@ -9,16 +10,20 @@ const symbols = { article: "↗", video: "▷", audio: "♫", image: "◈" };
 export function ContentList({
   items,
   onDelete,
+  onIndex,
   emptyMessage = "Nothing here yet. Save a link to start building your space.",
 }: {
   items: Content[];
   onDelete?: (id: string) => void;
+  onIndex?: (item: Content) => void;
   emptyMessage?: string;
 }) {
   if (!items.length)
     return (
       <div className="empty">
-        <div className="empty-mark">✳</div>
+        <div className="empty-mark">
+          <Spark />
+        </div>
         <h3>Space to think</h3>
         <p>{emptyMessage}</p>
       </div>
@@ -59,6 +64,20 @@ export function ContentList({
               }
             })()}
           </p>
+          {onIndex && (
+            <div className="index-row">
+              <button
+                className="index-button"
+                type="button"
+                onClick={() => onIndex(item)}
+              >
+                {item.rag?.indexedAt ? "Reindex for AI" : "+ Index for AI"}
+              </button>
+              {item.rag?.indexedAt && (
+                <span className="indexed-indicator">Indexed</span>
+              )}
+            </div>
+          )}
           <div className="card-bottom">
             <div className="tags">
               {item.tags.map((tag) => (

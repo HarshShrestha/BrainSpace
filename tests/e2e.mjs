@@ -29,11 +29,19 @@ const env = {
   PORT: String(apiPort),
   NODE_ENV: "production",
   E2E_API_PROXY: `http://127.0.0.1:${apiPort}`,
+  RAG_ENABLED: "true",
+  OPENAI_API_KEY: "e2e-test-only",
+  OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
+  OPENAI_CHAT_MODEL: "gpt-4o-mini",
 };
-const backend = spawn(process.execPath, ["dist/index.js"], {
-  env,
-  stdio: "inherit",
-});
+const backend = spawn(
+  process.execPath,
+  ["--import", "./tests/provider-e2e-stub.mjs", "dist/index.js"],
+  {
+    env,
+    stdio: "inherit",
+  },
+);
 const frontend = spawn(
   process.execPath,
   [
@@ -73,6 +81,13 @@ try {
   const page = await context.newPage();
   page.on("dialog", (dialog) => dialog.accept());
   await page.goto(baseUrl);
+  if (process.env.RAG_QA_DIR) {
+    await mkdir(process.env.RAG_QA_DIR, { recursive: true });
+    await page.screenshot({
+      path: path.join(process.env.RAG_QA_DIR, "auth.png"),
+      fullPage: true,
+    });
+  }
   await page.getByRole("button", { name: "Create an account" }).click();
   await page.getByLabel("Username").fill("reader");
   await page.getByLabel("Password").fill("strong-example-password");
@@ -86,16 +101,42 @@ try {
   await page
     .getByRole("link", { name: /Designing a calmer internet/ })
     .waitFor();
+  await page.getByRole("button", { name: /Index for AI/ }).click();
+  if (process.env.RAG_QA_DIR)
+    await page.screenshot({
+      path: path.join(process.env.RAG_QA_DIR, "index-dialog.png"),
+      fullPage: true,
+    });
+  await page
+    .getByLabel(/Source text/)
+    .fill(
+      "The example uses blue cards for each source. These cards are arranged with generous spacing to support a calm reading experience.",
+    );
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Index source", exact: true }).click();
+  await page.getByText("1 source ready").waitFor();
+  await page
+    .getByLabel(/Ask a question about your indexed sources/)
+    .fill("What color are the cards?");
+  await page.getByRole("button", { name: "Ask question" }).click();
+  await page
+    .getByText("The example uses blue cards.", { exact: true })
+    .waitFor();
+  await page
+    .getByText("“The example uses blue cards for each source.”")
+    .waitFor();
   if (process.env.SCREENSHOT_DIR) {
     await mkdir(process.env.SCREENSHOT_DIR, { recursive: true });
     await page.screenshot({
       path: path.join(process.env.SCREENSHOT_DIR, "workspace.png"),
       fullPage: true,
+      animations: "disabled",
     });
   }
   await page.getByLabel("Search your content").fill("inspiration");
   assert.equal(
     await page
+      .locator(".content-grid")
       .getByRole("link", { name: /Designing a calmer internet/ })
       .count(),
     1,
@@ -122,6 +163,7 @@ try {
     await page.screenshot({
       path: path.join(process.env.SCREENSHOT_DIR, "mobile.png"),
       fullPage: true,
+      animations: "disabled",
     });
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,
@@ -131,6 +173,9 @@ try {
     false,
     "Mobile layout should not overflow horizontally",
   );
+  await page.getByRole("button", { name: /Reindex for AI/ }).click();
+  await page.getByRole("button", { name: "Remove AI index" }).click();
+  await page.getByText("0 sources ready").waitFor({ state: "attached" });
   await page
     .getByRole("button", { name: "Delete Designing a calmer internet" })
     .click();
@@ -146,7 +191,7 @@ try {
     .click();
   await page.getByRole("button", { name: /Add content/ }).waitFor();
   console.log(
-    "E2E passed: signup, capture, search, share, revoke, delete, sign-out, sign-in and mobile layout.",
+    "E2E passed: signup, capture, indexing, cited chat, unindex, search, share, revoke, delete, sign-in and mobile layout (AI provider stubbed).",
   );
 } finally {
   await browser?.close();
