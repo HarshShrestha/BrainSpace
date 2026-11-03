@@ -1,5 +1,6 @@
 """Conservative public-page retrieval with validated, pinned DNS on each hop."""
 
+import codecs
 import http.client
 import ipaddress
 import re
@@ -10,49 +11,76 @@ from urllib.parse import urljoin, urlsplit
 from .errors import RagError
 
 MAX_BYTES = 1_000_000
-BLOCKED = {
-    "script",
-    "style",
-    "noscript",
-    "nav",
-    "footer",
-    "header",
-    "form",
-    "svg",
-    "iframe",
-}
+# Never readable text.
+CODE = {"script", "style", "noscript", "template", "svg", "iframe"}
+# Page chrome and form controls; dropped only while enough article text remains.
+# <form> itself is not listed: some frameworks (e.g. ASP.NET WebForms) wrap the whole page in one.
+BLOCKED = CODE | {"nav", "footer", "header", "select", "button", "textarea"}
+MIN_TEXT = 80
+# NAT64 prefixes embed an IPv4 destination in the low 32 bits.
+NAT64 = (ipaddress.ip_network("64:ff9b::/96"), ipaddress.ip_network("64:ff9b:1::/48"))
 
 
 def is_public_address(address):
     try:
         ip = ipaddress.ip_address(address)
-        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
-            ip = ip.ipv4_mapped
-        return ip.is_global
+        if isinstance(ip, ipaddress.IPv6Address):
+            if ip.ipv4_mapped:
+                ip = ip.ipv4_mapped
+            elif any(ip in net for net in NAT64):
+                ip = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+        return ip.is_global and not ip.is_multicast
     except ValueError:
         return False
 
 
 class TextParser(HTMLParser):
-    def __init__(self):
+    def __init__(self, blocked=BLOCKED):
         super().__init__(convert_charrefs=True)
+        self.blocked = blocked
         self.depth = 0
         self.text = []
 
     def handle_starttag(self, tag, attrs):
-        if tag in BLOCKED:
+        if tag in self.blocked:
             self.depth += 1
 
     def handle_startendtag(self, tag, attrs):
         pass
 
     def handle_endtag(self, tag):
-        if tag in BLOCKED and self.depth:
+        if tag in self.blocked and self.depth:
             self.depth -= 1
 
     def handle_data(self, data):
         if not self.depth:
             self.text.append(data)
+
+
+def clean(text):
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def html_text(html):
+    """Drop page chrome; if that leaves too little (e.g. an unclosed <header>), keep everything but code."""
+    for blocked in (BLOCKED, CODE):
+        parser = TextParser(blocked)
+        parser.feed(html)
+        parser.close()
+        text = " ".join(parser.text)
+        if len(clean(text)) >= MIN_TEXT:
+            break
+    return text
+
+
+def charset(content_type):
+    match = re.search(r"charset=[\"']?([\w.:-]+)", content_type or "", re.I)
+    if match:
+        try:
+            return codecs.lookup(match.group(1)).name
+        except LookupError:
+            pass
+    return "utf-8"
 
 
 def fetch_public_text(source):
@@ -136,10 +164,8 @@ def fetch_public_text(source):
             ) from None
         finally:
             conn.close()
-        text = body.decode("utf-8", errors="replace")
+        text = body.decode(charset(response.getheader("Content-Type")), errors="replace")
         if ctype == "text/html":
-            parser = TextParser()
-            parser.feed(text)
-            text = " ".join(parser.text)
-        return re.sub(r"\s+", " ", text).strip()[:24000]
+            text = html_text(text)
+        return clean(text)[:24000]
     raise RagError(422, "Too many redirects")
