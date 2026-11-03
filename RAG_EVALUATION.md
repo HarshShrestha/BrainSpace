@@ -7,18 +7,18 @@
 
 ```dotenv
 RAG_ENABLED=true
-OPENAI_API_KEY=<your-server-side-key>
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-OPENAI_CHAT_MODEL=gpt-4o-mini
+GEMINI_API_KEY=<your-server-side-key>
+GEMINI_EMBEDDING_MODEL=gemini-embedding-001
+GEMINI_CHAT_MODEL=gemini-3.8-flash
 ```
 
-The key requires an OpenAI account with access to the selected models, available billing/quota, and network access to `https://api.openai.com`. The model must support Chat Completions structured outputs. Keep the key out of Git, logs, browser code and chat. The two model settings are optional with the shown defaults. After editing the environment, restart the API. Changing the embedding model requires reindexing each source.
-3. Save a link. On its card choose **Index for AI**. Paste at least 80 characters of source text, or leave the box empty to fetch a publicly accessible HTML/plain-text page. Read the privacy notice and explicitly consent. The first 24,000 characters are chunked and embedded. Restricted pages, PDFs, images, audio and video are not parsed/transcribed; paste their text or transcript instead. User content, questions and retrieved excerpts are sent to OpenAI and incur usage charges. Indexing is not automatic.
+The key requires a Gemini API account with access to the selected models, available billing/quota, and network access to `https://generativelanguage.googleapis.com`. The model must support Gemini structured JSON output. Keep the key out of Git, logs, browser code and chat. The model settings are optional with the shown defaults; `gemini-embedding-001` is the supported embedding model. Ensure the configured generation model is available to your account and supports structured output. After editing the environment, restart the API. Changing the embedding model requires reindexing each source.
+3. Save a link. On its card choose **Index for AI**. Paste at least 80 characters of source text, or leave the box empty to fetch a publicly accessible HTML/plain-text page. Read the privacy notice and explicitly consent. The first 24,000 characters are chunked and embedded. Restricted pages, PDFs, images, audio and video are not parsed/transcribed; paste their text or transcript instead. User content, questions and retrieved excerpts are sent to Gemini and incur usage charges. Indexing is not automatic.
 4. Open the floating chat button and ask a question in **Ask your space**. Review the linked sources and quotations; pasted text is labelled and is not verified against the linked page. Extracted content can also become stale; each question is independent, so the chatbot does not resolve follow-up references from earlier messages. Click **Reindex for AI** to refresh changed text or **Remove AI index** to remove indexed chunks/vectors while retaining the saved link. Deleting the link also deletes its live index.
 
 ## How it works
 
-The Python RAG worker handles extraction, chunking, embeddings, retrieval, generation and evidence checks. The authenticated Express API scopes MongoDB reads and writes by user and starts the worker through private stdin/stdout; there is no Python HTTP endpoint. Existing indexed data is compatible. Each authenticated user can only index and retrieve their own content. Public page retrieval permits only HTTP(S) on standard ports, validates all DNS answers, pins the connection to a public address and revalidates each redirect. It caps response size and time. An external egress firewall is still required for defense in depth. HTML extraction is best effort, with no JavaScript execution or authenticated browsing.
+The Python RAG worker handles extraction, chunking, embeddings, retrieval, generation and evidence checks. The authenticated Express API scopes MongoDB reads and writes by user and starts the worker through private stdin/stdout; there is no Python HTTP endpoint. Indexes created using the previous OpenAI embedding model must be reindexed; incompatible sources are excluded until then. Each authenticated user can only index and retrieve their own content. Public page retrieval permits only HTTP(S) on standard ports, validates all DNS answers, pins the connection to a public address and revalidates each redirect. It caps response size and time. An external egress firewall is still required for defense in depth. HTML extraction is best effort, with no JavaScript execution or authenticated browsing.
 
 Text is split into overlapping ~1,000-character chunks. Vectors are stored in the owning content document. Retrieval ranks by cosine similarity, selects up to five chunks with a fixed 0.35 threshold, then asks the chat model to use only those excerpts. The server rejects answers without matching verbatim quotes and asks the model in a separate call to check whether the quotes support the answer. If retrieval, citation validation or support checks fail, the assistant abstains. A provider error is shown rather than fabricated into an answer.
 
@@ -37,7 +37,7 @@ The deterministic tests cover retrieval and irrelevant-query abstention, fabrica
 
 ## Optional live evaluation (billable)
 
-The synthetic labelled fixture is `tests/fixtures/rag-eval.json`. The runner creates a temporary MongoDB, indexes only that synthetic text and calls the configured OpenAI models. It **does not** use real user data. It will refuse to run unless the explicit opt-in environment variable is set. After configuring the key, review costs and run:
+The synthetic labelled fixture is `tests/fixtures/rag-eval.json`. The runner creates a temporary MongoDB, indexes only that synthetic text and calls the configured Gemini models. It **does not** use real user data. It will refuse to run unless the explicit opt-in environment variable is set. After configuring the key, review costs and run:
 
 ```bash
 RAG_EVAL_ALLOW_PAID=true npm run eval:rag
@@ -50,3 +50,5 @@ The JSON report includes source-level recall@5, source-level context precision@5
 ## Production evaluation plan
 
 Before release, construct a much larger held-out, consented and access-controlled labelled set representative of actual users: relevant and irrelevant sources, paraphrases, multi-document questions, ambiguous/missing evidence, contradictory/outdated sources, multilingual text, prompt-injection attempts, long documents and cross-user access. Measure retrieval recall@k and context precision by labelled source/chunk, answer relevance and correctness, human-rated claim-level faithfulness, citation entailment and validity, refusal/abstention precision and recall, leakage/injection resistance, p50/p95 latency, error rate, token use and cost. Report confidence intervals and slice results by source type and user scenario. Use independent reviewers and adjudicate disagreements; do not use the same model's support check as ground truth. Review failures and calibrate thresholds on a separate development set, then rerun the held-out set. Repeat on model/prompt/chunking changes and monitor privacy-safe aggregates in production. Define release thresholds with product owners; this repo does not assert universal thresholds or that all failure modes have been evaluated.
+
+Provider protocol references: [Gemini embedding API](https://ai.google.dev/api/embeddings) and [Gemini generateContent API](https://ai.google.dev/api/generate-content). No live Gemini call or production quality evaluation was performed without a key.

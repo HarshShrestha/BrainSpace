@@ -18,9 +18,9 @@ This guide describes the implemented Node/Express API, MongoDB database and stat
 | `TRUST_PROXY_HOPS` | backend | Optional integer 1–10; set only to the exact count of trusted reverse proxies. Used for client IP/rate limiting; incorrect values permit spoofing or overly broad throttling. |
 | `RAG_PYTHON` | backend | Optional absolute path to the Python 3.10+ executable; defaults to `python3`. |
 | `RAG_ENABLED` | backend | Optional; `true` explicitly enables AI indexing and chat. Default off. |
-| `OPENAI_API_KEY` | backend | Required when AI is enabled; secret manager only, never frontend. |
-| `OPENAI_EMBEDDING_MODEL` | backend | Optional; default `text-embedding-3-small`. Changing it requires reindexing. |
-| `OPENAI_CHAT_MODEL` | backend | Optional; default `gpt-4o-mini`; must support Chat Completions structured outputs. |
+| `GEMINI_API_KEY` | backend | Required when AI is enabled; secret manager only, never frontend. |
+| `GEMINI_EMBEDDING_MODEL` | backend | Optional; default `gemini-embedding-001` (the supported embedding model); changing it requires reindexing. |
+| `GEMINI_CHAT_MODEL` | backend | Optional; default `gemini-3.8-flash`; must support Gemini structured JSON output. |
 | `VITE_API_URL` | frontend build | Optional; defaults to `/api`. Build-time and public, never a secret. Prefer the same-origin default. |
 
 Use a secret manager to generate/store the token secret, for example `openssl rand -hex 32`. Never paste actual secrets into documentation. MongoDB credentials and token secrets must not be in the built frontend.
@@ -67,7 +67,7 @@ The SPA fallback is required for `/shared/<token>` links. Disable or redact toke
 
 ## 4. Database and migration precautions
 
-Models create unique indexes on usernames, tag titles, share hashes and share owner; content has an owner/date index. There is no migration or seed framework and no seed data. Back up any existing database before rollout. On a pre-existing deployment, inspect for duplicate usernames, tag titles, link hashes or multiple links per user before building unique indexes; resolve collisions deliberately with a verified backup and a migration plan. New share links are stored as SHA-256 digests; old plaintext link records, if any were manually created, are not compatible and should be reissued with user consent. Test upgrades and index creation on a restored copy first. MongoDB auto-indexing must not be disabled without separately creating the model indexes.
+Models create unique indexes on usernames, tag titles, share hashes, share owner, per-owner folder names and recipient/share pairs; content has an owner/date index. There is no migration or seed framework and no seed data. Back up any existing database before rollout. On a pre-existing deployment, inspect for duplicate usernames, tag titles, link hashes or multiple links per user before building unique indexes; resolve collisions deliberately with a verified backup and a migration plan. New share links are stored as SHA-256 digests; old plaintext link records, if any were manually created, are not compatible and should be reissued with user consent. Test upgrades and index creation on a restored copy first. MongoDB auto-indexing must not be disabled without separately creating the model indexes.
 
 ## 5. Verify before admitting users
 
@@ -86,6 +86,6 @@ To roll back, restore the previously tested application artifact/commit and its 
 
 ## 7. Optional AI search
 
-AI is off by default. Before enabling it, review provider data-handling terms, user consent, spending limits and [RAG_EVALUATION.md](RAG_EVALUATION.md). Set the variables in the backend secret manager and allow outbound HTTPS to the OpenAI API; source fetching also needs outbound HTTP(S) to publicly accessible pages. Prevent access to private, loopback, link-local and cloud-metadata addresses at the network layer as defense in depth; the application validates and pins DNS addresses on each redirect, but should not be the only network control. Do not log prompts, source text, bearer keys, or share tokens. Source excerpts and questions are transmitted to OpenAI; an index stores source chunks and embeddings in MongoDB. Backups retain them until their retention period expires, even if a live index is removed.
+AI is off by default. Before enabling it, review provider data-handling terms, user consent, spending limits and [RAG_EVALUATION.md](RAG_EVALUATION.md). Set the variables in the backend secret manager and allow outbound HTTPS to the Gemini API; source fetching also needs outbound HTTP(S) to publicly accessible pages. Prevent access to private, loopback, link-local and cloud-metadata addresses at the network layer as defense in depth; the application validates and pins DNS addresses on each redirect, but should not be the only network control. Do not log prompts, source text, bearer keys, or share tokens. Source excerpts and questions are transmitted to Gemini; an index stores source chunks and embeddings in MongoDB. Backups retain them until their retention period expires, even if a live index is removed.
 
 The current index is limited to 250 indexed sources per account and performs per-request Python-process cosine ranking, not a scalable vector database. Protect the service from abuse and configure distributed quotas/monitoring before multi-instance or high-volume deployment; the built-in AI rate limit is per-process. Changing the embedding model makes existing indexes incompatible until individually reindexed. There is no automatic refresh of changed websites, transcription, OCR, PDF parsing, or private-site authentication. Treat an unreachable/unsupported source as a request for pasted text, never as verified content. Real model accuracy, production network policy, data retention and costs need staging verification before rollout.

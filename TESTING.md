@@ -2,9 +2,9 @@
 
 ## Tools and scope
 
-- **API:** Vitest, Supertest and `mongodb-memory-server` in `tests/api.test.ts`, exercising real Express handlers and MongoDB. Tests cover account creation and login, invalid inputs, authorization/owner isolation, content creation/list/deletion, link rotation/revocation, public retrieval, origin rejection and session invalidation.
+- **API:** Vitest, Supertest and `mongodb-memory-server` in `tests/api.test.ts`, exercising real Express handlers and MongoDB. Tests cover account creation and login, invalid inputs, authorization/owner isolation, content creation/list/deletion, folder ownership and moves, recipient-scoped saved shares, link rotation/revocation, public retrieval, origin rejection and session invalidation.
 - **Frontend:** Vitest, jsdom and React Testing Library in `frontend/src/**/*.test.tsx` cover content form submission/error/escape, list/empty/delete behavior and authentication-driven Recoil updates.
-- **Browser:** `tests/e2e.mjs` uses Playwright, the built frontend, the built API and an isolated temporary MongoDB. It exercises registration, saving, indexing, cited chat, index removal, search, read-only sharing, revocation, deletion, logout/login and a mobile-width overflow check. Python OpenAI HTTP calls are intercepted by a test-only stub; no real provider is tested. The screenshots in `docs/screenshots` were generated from this isolated test. Set `SCREENSHOT_DIR=docs/screenshots` when deliberately refreshing them; normal test runs do not alter tracked screenshots.
+- **Browser:** `tests/e2e.mjs` uses Playwright, the built frontend, the built API and an isolated temporary MongoDB. It exercises registration, saving, indexing, cited chat, index removal, search, folders and moves, dark-mode persistence, received read-only sharing and revocation, deletion, logout/login and a mobile-width overflow check. Python Gemini HTTP calls are intercepted by a test-only stub; no real provider is tested. The screenshots in `docs/screenshots` were generated from this isolated test. Set `SCREENSHOT_DIR=docs/screenshots` when deliberately refreshing them; normal test runs do not alter tracked screenshots.
 
 ## Commands
 

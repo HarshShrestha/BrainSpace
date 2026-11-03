@@ -16,12 +16,15 @@ Screenshots use sample data and a test-only AI provider stub from the automated 
 
 - Create an account and sign in with a username and password.
 - Save HTTP(S) links with a title, type and optional tags; browse, search and filter them.
+- Organize links into single-level folders, and move items between folders. Empty folders can be deleted.
+- Keep read-only BrainSpace links shared with you by pasting them into **Shared with me**; a revoked or rotated link stops working.
+- Toggle light/dark mode and access your account menu in the top-right.
 - Remove saved items. Each account can access only its own collection.
 - Create a revocable, read-only link to your entire collection. Anyone possessing the link can view it; creating a new one invalidates the old one.
 - Ask questions over explicitly indexed sources, with quotations, links and a conservative evidence check.
 - Responsive interface, keyboard-accessible dialogs, loading, empty and error states.
 
-The standard search filters saved titles, URLs and tags locally. Optional AI search uses indexed source text and embeddings; it is disabled until configured. AI answers may still be wrong: check their quoted evidence. Editing saved items, password recovery and collections are not currently implemented.
+The standard search filters saved titles, URLs and tags locally. Optional AI search uses indexed source text and embeddings; it is disabled until configured. AI answers may still be wrong: check their quoted evidence. Editing saved items, nested folders, file uploads, password recovery and automatic shared-link discovery are not currently implemented.
 
 ## Stack and architecture
 
@@ -50,7 +53,7 @@ Visit `http://localhost:5173` and create an account. Set `PORT`, `CORS_ORIGIN`, 
 
 ## Optional AI search
 
-Set `RAG_ENABLED=true` and a server-side `OPENAI_API_KEY` in `.env`. The default embedding and chat models can be configured via `OPENAI_EMBEDDING_MODEL` and `OPENAI_CHAT_MODEL`; see [RAG_EVALUATION.md](RAG_EVALUATION.md). Restart the API, save a link, choose **Index for AI**, and explicitly consent before indexing. Leave the text field blank to fetch an accessible public HTML/text page, or paste text/transcripts. Open the floating **Ask your space** button to ask a question. Indexing and questions send text to OpenAI and may incur charges. The feature will not work without a valid key and network access; it is off by default.
+Set `RAG_ENABLED=true` and a server-side `GEMINI_API_KEY` in `.env`. The default embedding and chat models can be configured via `GEMINI_EMBEDDING_MODEL` and `GEMINI_CHAT_MODEL`; see [RAG_EVALUATION.md](RAG_EVALUATION.md). Restart the API, save a link, choose **Index for AI**, and explicitly consent before indexing. Leave the text field blank to fetch an accessible public HTML/text page, or paste text/transcripts. Open **Ask your space** to use the full workspace assistant and its source sidebar. Reindex any sources indexed with the earlier OpenAI model. Indexing and questions send text to Gemini and may incur charges. The feature will not work without a valid key and network access; it is off by default.
 
 ## Build and test
 
