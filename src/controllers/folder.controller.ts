@@ -14,6 +14,14 @@ export const create = asyncHandler(async (req, res) => {
   const { name } = z
     .object({ name: z.string().trim().min(1).max(100) })
     .parse(req.body);
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (
+    await Folder.exists({
+      userId: req.userId!,
+      name: { $regex: `^${escaped}$`, $options: "i" },
+    })
+  )
+    throw new ApiError(409, "A folder with this name already exists");
   const folder = await Folder.create({ name, userId: req.userId! });
   res.status(201).json({ success: true, data: folder });
 });
@@ -26,5 +34,10 @@ export const remove = asyncHandler(async (req, res) => {
   if (await Content.exists({ userId: req.userId!, folderId: id }))
     throw new ApiError(409, "Move all items out before deleting this folder");
   await Folder.deleteOne({ _id: id, userId: req.userId! });
+  // An item moved in concurrently (after the emptiness check) goes back to the root.
+  await Content.updateMany(
+    { userId: req.userId!, folderId: id },
+    { $set: { folderId: null } },
+  );
   res.json({ success: true, data: null });
 });

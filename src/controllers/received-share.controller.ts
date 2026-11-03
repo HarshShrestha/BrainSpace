@@ -35,12 +35,21 @@ export const save = asyncHandler(async (req, res) => {
   if (!link) throw new ApiError(404, "Shared space not found or revoked");
   if (link.userId.toString() === req.userId)
     throw new ApiError(400, "You cannot add your own shared space");
-  const saved = await ReceivedShare.findOneAndUpdate(
-    { userId: req.userId!, shareHash: hash },
-    { $setOnInsert: { userId: req.userId!, shareHash: hash } },
-    { upsert: true, returnDocument: "after" },
-  );
-  res.status(201).json({ success: true, data: { id: saved._id } });
+  const key = { userId: req.userId!, shareHash: hash };
+  const existing = await ReceivedShare.findOne(key).lean();
+  if (existing) {
+    res.json({ success: true, data: { id: existing._id } });
+    return;
+  }
+  try {
+    const saved = await ReceivedShare.create(key);
+    res.status(201).json({ success: true, data: { id: saved._id } });
+  } catch (err) {
+    // A concurrent request saved the same link first.
+    if ((err as { code?: number }).code !== 11000) throw err;
+    const raced = await ReceivedShare.findOne(key).lean();
+    res.json({ success: true, data: { id: raced!._id } });
+  }
 });
 export const list = asyncHandler(async (req, res) => {
   const saved = await ReceivedShare.find({ userId: req.userId! })
