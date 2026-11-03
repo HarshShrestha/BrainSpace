@@ -128,5 +128,34 @@ class RetrievalTests(unittest.TestCase):
         )
 
 
+
+class ExtractionRegressionTests(unittest.TestCase):
+    body = "Article text that should be indexed. " * 4
+
+    def test_page_wrapped_in_form_is_readable(self):
+        html = f'<form id="aspnetForm"><nav>Menu</nav><p>{self.body}</p><button>Go</button></form>'
+        text = " ".join(extraction.html_text(html).split())
+        self.assertIn("Article text", text)
+        self.assertNotIn("Menu", text)
+        self.assertNotIn("Go", text)
+
+    def test_unclosed_header_falls_back_to_all_non_code_text(self):
+        html = f"<header><h1>Site</h1><p>{self.body}</p><script>bad()</script>"
+        text = extraction.html_text(html)
+        self.assertIn("Article text", text)
+        self.assertNotIn("bad()", text)
+
+    def test_declared_charset_is_used(self):
+        latin1 = "café".encode("latin-1")
+        self.assertEqual(latin1.decode(extraction.charset("text/plain; charset=ISO-8859-1")), "café")
+        self.assertEqual(extraction.charset('text/html; charset="utf-8"'), "utf-8")
+        self.assertEqual(extraction.charset("text/html; charset=bogus"), "utf-8")
+        self.assertEqual(extraction.charset(None), "utf-8")
+
+    def test_multicast_and_nat64_private_targets_blocked(self):
+        for ip in ["224.0.0.1", "ff02::1", "64:ff9b::7f00:1", "64:ff9b::a9fe:a9fe", "64:ff9b:1::a00:1"]:
+            self.assertFalse(extraction.is_public_address(ip), ip)
+        self.assertTrue(extraction.is_public_address("64:ff9b::808:808"))
+
 if __name__ == "__main__":
     unittest.main()
