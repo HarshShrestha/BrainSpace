@@ -90,11 +90,7 @@ export function Auth() {
               </p>
             )}
             <button className="primary wide" disabled={busy}>
-              {busy
-                ? "Please wait…"
-                : signup
-                  ? "Create account →"
-                  : "Sign in →"}
+              {busy ? "Please wait…" : signup ? "Create account" : "Sign in"}
             </button>
           </form>
           <p className="auth-switch">

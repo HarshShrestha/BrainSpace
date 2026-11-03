@@ -33,15 +33,12 @@ const env = {
   OPENAI_API_KEY: "e2e-test-only",
   OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
   OPENAI_CHAT_MODEL: "gpt-4o-mini",
+  PYTHONPATH: path.resolve("tests/python_stubs"),
 };
-const backend = spawn(
-  process.execPath,
-  ["--import", "./tests/provider-e2e-stub.mjs", "dist/index.js"],
-  {
-    env,
-    stdio: "inherit",
-  },
-);
+const backend = spawn(process.execPath, ["dist/index.js"], {
+  env,
+  stdio: "inherit",
+});
 const frontend = spawn(
   process.execPath,
   [
@@ -101,7 +98,26 @@ try {
   await page
     .getByRole("link", { name: /Designing a calmer internet/ })
     .waitFor();
-  await page.getByRole("button", { name: /Index for AI/ }).click();
+  for (const item of [
+    { title: "A field guide to ideas", type: "article" },
+    { title: "Notes on creative work", type: "video" },
+    { title: "A quieter way to listen", type: "audio" },
+  ]) {
+    await page.getByRole("button", { name: /Add content/ }).click();
+    await page.getByLabel("Title").fill(item.title);
+    await page.getByLabel("Link").fill("https://example.com/" + item.type);
+    await page.getByLabel("Content type").selectOption(item.type);
+    await page.getByRole("button", { name: "Save to space" }).click();
+    await page.getByRole("link", { name: item.title }).waitFor();
+  }
+
+  await page
+    .locator("article")
+    .filter({
+      has: page.getByRole("link", { name: "Designing a calmer internet" }),
+    })
+    .getByRole("button", { name: "Index for AI" })
+    .click();
   if (process.env.RAG_QA_DIR)
     await page.screenshot({
       path: path.join(process.env.RAG_QA_DIR, "index-dialog.png"),
@@ -114,6 +130,7 @@ try {
     );
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Index source", exact: true }).click();
+  await page.getByRole("button", { name: "Open AI assistant" }).click();
   await page.getByText("1 source ready").waitFor();
   await page
     .getByLabel(/Ask a question about your indexed sources/)
@@ -125,6 +142,13 @@ try {
   await page
     .getByText("“The example uses blue cards for each source.”")
     .waitFor();
+  if (process.env.RAG_QA_DIR) {
+    await page.screenshot({
+      path: path.join(process.env.RAG_QA_DIR, "desktop-chat.png"),
+      animations: "disabled",
+    });
+  }
+  await page.getByRole("button", { name: "Close AI assistant" }).click();
   if (process.env.SCREENSHOT_DIR) {
     await mkdir(process.env.SCREENSHOT_DIR, { recursive: true });
     await page.screenshot({
@@ -165,6 +189,26 @@ try {
       fullPage: true,
       animations: "disabled",
     });
+  await page.getByRole("button", { name: "Open AI assistant" }).click();
+  const chatRect = await page
+    .getByRole("dialog", { name: "Ask your space" })
+    .boundingBox();
+  assert.ok(
+    chatRect && chatRect.x >= 0 && chatRect.x + chatRect.width <= 390,
+    "Mobile chat should fit the viewport",
+  );
+  if (process.env.RAG_QA_DIR)
+    await page.screenshot({
+      path: path.join(process.env.RAG_QA_DIR, "mobile-chat.png"),
+      animations: "disabled",
+    });
+  await page.keyboard.press("Escape");
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Open AI assistant" })
+      .getAttribute("aria-expanded"),
+    "false",
+  );
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
@@ -175,10 +219,17 @@ try {
   );
   await page.getByRole("button", { name: /Reindex for AI/ }).click();
   await page.getByRole("button", { name: "Remove AI index" }).click();
-  await page.getByText("0 sources ready").waitFor({ state: "attached" });
-  await page
-    .getByRole("button", { name: "Delete Designing a calmer internet" })
-    .click();
+  await page.getByRole("button", { name: "Open AI assistant" }).click();
+  await page.getByText("0 sources ready").waitFor();
+  await page.getByRole("button", { name: "Close AI assistant" }).click();
+  for (const title of [
+    "A field guide to ideas",
+    "Notes on creative work",
+    "A quieter way to listen",
+    "Designing a calmer internet",
+  ]) {
+    await page.getByRole("button", { name: `Delete ${title}` }).click();
+  }
   await page
     .getByText("Nothing here yet. Save a link to start building your space.")
     .waitFor();

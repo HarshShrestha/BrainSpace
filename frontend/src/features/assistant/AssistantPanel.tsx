@@ -1,4 +1,3 @@
-import { Spark } from "../../components/Icons";
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../../services/api";
 import type { RagAnswer, RagStatus } from "../../types";
@@ -53,24 +52,11 @@ export function AssistantPanel({ revision }: { revision: number }) {
   return (
     <section className="assistant-panel" aria-labelledby="assistant-title">
       <div className="assistant-heading">
-        <div>
-          <span className="assistant-kicker">
-            <Spark /> YOUR KNOWLEDGE, CONNECTED
-          </span>
-          <h2 id="assistant-title">Ask your space.</h2>
-          <p>
-            Turn what you’ve saved into answers you can trace back to the
-            source.
-          </p>
-        </div>
+        <h2 id="assistant-title">Ask your space</h2>
+        <p>Answers from your indexed sources.</p>
         <div className="assistant-count">
-          <span className="assistant-orb" aria-hidden="true">
-            <Spark />
-          </span>
-          <span>
-            {status?.compatible ?? 0}{" "}
-            {(status?.compatible ?? 0) === 1 ? "source" : "sources"} ready
-          </span>
+          {status?.compatible ?? 0}{" "}
+          {(status?.compatible ?? 0) === 1 ? "source" : "sources"} ready
         </div>
       </div>
       <div className="assistant-body">
@@ -92,8 +78,7 @@ export function AssistantPanel({ revision }: { revision: number }) {
           </p>
         ) : (
           <p className="assistant-hint">
-            Answers use only indexed sources and can be incomplete or wrong.
-            Check the quoted evidence.
+            Check the evidence; answers can be incomplete or wrong.
           </p>
         )}
         {status && status.indexed > status.compatible && (
@@ -122,7 +107,7 @@ export function AssistantPanel({ revision }: { revision: number }) {
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            {source.title} ↗
+                            {source.title}
                           </a>
                           <p className="source-provenance">
                             {source.sourceType === "pasted"
@@ -172,12 +157,12 @@ export function AssistantPanel({ revision }: { revision: number }) {
             }
             aria-label="Ask question"
           >
-            {busy ? "Thinking…" : "Ask →"}
+            {busy ? "Thinking…" : "Ask"}
           </button>
         </form>
         <p className="privacy-note">
-          Questions and retrieved excerpts are sent to the configured AI
-          provider. Each question is searched independently.
+          Questions and excerpts go to the AI provider. Each question is
+          independent.
         </p>
       </div>
     </section>

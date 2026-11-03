@@ -1,3 +1,4 @@
+import { Icon } from "../../components/Icons";
 import { Modal } from "../../components/Modal";
 import { useState } from "react";
 import { api } from "../../services/api";
@@ -47,7 +48,7 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
           <h2 id="share-title">Share your space</h2>
         </div>
         <button className="icon-button" onClick={onClose} aria-label="Close">
-          ×
+          <Icon name="close" />
         </button>
       </div>
       <p className="muted">

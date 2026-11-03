@@ -1,3 +1,4 @@
+import { Icon } from "../../components/Icons";
 import { Modal } from "../../components/Modal";
 import { useState, type FormEvent } from "react";
 import type { ContentInput, ContentType } from "../../types";
@@ -51,7 +52,7 @@ export function ContentForm({
           onClick={onClose}
           aria-label="Close"
         >
-          ×
+          <Icon name="close" />
         </button>
       </div>
       <form onSubmit={submit}>

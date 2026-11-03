@@ -1,3 +1,4 @@
+import { Icon } from "../../components/Icons";
 import { useState, type FormEvent } from "react";
 import { Modal } from "../../components/Modal";
 import { api } from "../../services/api";
@@ -50,7 +51,7 @@ export function IndexDialog({
           <h2 id="index-title">Index this source</h2>
         </div>
         <button className="icon-button" onClick={onClose} aria-label="Close">
-          ×
+          <Icon name="close" />
         </button>
       </div>
       <p className="muted">{item.title}</p>

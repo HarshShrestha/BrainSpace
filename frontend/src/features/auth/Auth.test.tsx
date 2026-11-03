@@ -22,7 +22,7 @@ describe("authentication and Recoil state", () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Username"), "alice");
     await user.type(screen.getByLabelText("Password"), "password123");
-    await user.click(screen.getByRole("button", { name: /Sign in →/ }));
+    await user.click(screen.getByRole("button", { name: /^Sign in$/ }));
     expect(await screen.findByTestId("current-user")).toHaveTextContent(
       "alice",
     );
@@ -41,7 +41,7 @@ describe("authentication and Recoil state", () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Username"), "alice");
     await user.type(screen.getByLabelText("Password"), "password123");
-    await user.click(screen.getByRole("button", { name: /Sign in →/ }));
+    await user.click(screen.getByRole("button", { name: /^Sign in$/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Invalid username or password",
     );

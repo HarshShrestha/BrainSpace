@@ -1,4 +1,4 @@
-import { Spark, SearchIcon, GridIcon } from "../../components/Icons";
+import { Spark, SearchIcon, GridIcon, Icon } from "../../components/Icons";
 import { useEffect, useMemo, useState } from "react";
 import { useRecoilState } from "recoil";
 import { contentState, userState } from "../../store/state";
@@ -7,7 +7,7 @@ import type { Content, ContentInput } from "../../types";
 import { ContentForm } from "./ContentForm";
 import { ContentList } from "./ContentList";
 import { ShareDialog } from "../share/ShareDialog";
-import { AssistantPanel } from "../assistant/AssistantPanel";
+import { AssistantDock } from "../assistant/AssistantDock";
 import { IndexDialog } from "../assistant/IndexDialog";
 export function Workspace() {
   const [user, setUser] = useRecoilState(userState),
@@ -102,10 +102,10 @@ export function Workspace() {
           <span>YOUR PERSONAL KNOWLEDGE SPACE</span>
           <div>
             <button className="secondary" onClick={() => setDialog("share")}>
-              ↗ &nbsp;Share
+              <Icon name="share" /> Share
             </button>
             <button className="primary" onClick={() => setDialog("add")}>
-              + &nbsp;Add content
+              <Icon name="add" /> Add content
             </button>
           </div>
         </header>
@@ -113,9 +113,7 @@ export function Workspace() {
           <div className="page-heading">
             <div>
               <span className="eyebrow">YOUR SECOND BRAIN</span>
-              <h1>
-                All your ideas, <em>in one place.</em>
-              </h1>
+              <h1>Your space</h1>
               <p>
                 A home for the links, thoughts and discoveries you want to keep.
               </p>
@@ -125,13 +123,12 @@ export function Workspace() {
               <span>THINGS SAVED</span>
             </div>
           </div>
-          <AssistantPanel revision={revision} />
           <div className="section-rule" />
           <div className="collection-heading">
             <div>
               <span className="eyebrow">THE COLLECTION</span>
               <h2>
-                Your space <span>{items.length}</span>
+                All content <span>{items.length}</span>
               </h2>
             </div>
             <div className="controls">
@@ -187,6 +184,7 @@ export function Workspace() {
           )}
         </section>
       </main>
+      <AssistantDock revision={revision} />
       {dialog === "add" && (
         <ContentForm onSave={save} onClose={() => setDialog(null)} />
       )}

@@ -1,4 +1,4 @@
-import { Spark } from "../../components/Icons";
+import { Spark, Icon } from "../../components/Icons";
 import type { Content } from "../../types";
 const labels = {
   article: "Article / document",
@@ -6,7 +6,12 @@ const labels = {
   audio: "Audio",
   image: "Image",
 };
-const symbols = { article: "↗", video: "▷", audio: "♫", image: "◈" };
+const symbols = {
+  article: "article",
+  video: "video_library",
+  audio: "audiotrack",
+  image: "image",
+};
 export function ContentList({
   items,
   onDelete,
@@ -34,7 +39,7 @@ export function ContentList({
         <article className="content-card" key={item._id}>
           <div className="card-top">
             <span className={`type-icon ${item.type}`}>
-              {symbols[item.type]}
+              <Icon name={symbols[item.type]} />
             </span>
             <span className="type-label">{labels[item.type]}</span>
             {onDelete && (
@@ -43,7 +48,7 @@ export function ContentList({
                 onClick={() => onDelete(item._id)}
                 aria-label={`Delete ${item.title}`}
               >
-                ×
+                <Icon name="delete" />
               </button>
             )}
           </div>
@@ -53,7 +58,7 @@ export function ContentList({
             target="_blank"
             rel="noopener noreferrer"
           >
-            {item.title} <span aria-hidden="true">↗</span>
+            {item.title}
           </a>
           <p className="domain">
             {(() => {
@@ -71,7 +76,7 @@ export function ContentList({
                 type="button"
                 onClick={() => onIndex(item)}
               >
-                {item.rag?.indexedAt ? "Reindex for AI" : "+ Index for AI"}
+                {item.rag?.indexedAt ? "Reindex for AI" : "Index for AI"}
               </button>
               {item.rag?.indexedAt && (
                 <span className="indexed-indicator">Indexed</span>
