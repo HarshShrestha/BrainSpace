@@ -9,6 +9,18 @@ const schema = new Schema(
     },
     title: { type: String, required: true, trim: true, maxlength: 200 },
     tags: [{ type: Schema.Types.ObjectId, ref: "Tag" }],
+    rag: {
+      indexedAt: { type: Date },
+      model: { type: String },
+      sourceType: { type: String, enum: ["page", "pasted"] },
+      chunks: [
+        {
+          text: { type: String, required: true },
+          embedding: { type: [Number], required: true },
+          _id: false,
+        },
+      ],
+    },
     userId: {
       type: Schema.Types.ObjectId,
       ref: "User",

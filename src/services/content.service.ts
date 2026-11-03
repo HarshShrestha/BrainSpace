@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 
 export async function listContent(userId: string) {
   return Content.find({ userId })
+    .select("-rag.chunks")
     .populate("tags", "title")
     .sort({ createdAt: -1 })
     .lean();
