@@ -3,6 +3,7 @@ import { z } from "zod";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { sessionUserId } from "../middlewares/auth.middleware.js";
 const credentials = z.object({
   username: z
     .string()
@@ -45,8 +46,11 @@ export const login = asyncHandler(async (req, res) => {
     .cookie("accessToken", user.generateAccessToken(), cookieOptions())
     .json({ success: true, data: { id: user.id, username: user.username } });
 });
+// Always clears the cookie, so a client holding an expired or revoked session can still sign out.
 export const logout = asyncHandler(async (req, res) => {
-  await User.updateOne({ _id: req.userId }, { $inc: { tokenVersion: 1 } });
+  const userId = await sessionUserId(req);
+  if (userId)
+    await User.updateOne({ _id: userId }, { $inc: { tokenVersion: 1 } });
   res
     .clearCookie("accessToken", { ...cookieOptions(), maxAge: undefined })
     .json({ success: true, data: null });

@@ -17,6 +17,13 @@ export class ApiError extends Error {
   }
 }
 const base = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
+// Called when an authenticated request reports that the session has ended.
+let onUnauthorized: () => void = () => {};
+export function setUnauthorizedHandler(handler: () => void) {
+  onUnauthorized = handler;
+}
+// A 401 here means "wrong credentials", not "session ended".
+const credentialPaths = ["/auth/login", "/auth/signup"];
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
@@ -32,6 +39,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     );
   }
   const body = await response.json().catch(() => ({}));
+  if (response.status === 401 && !credentialPaths.includes(path))
+    onUnauthorized();
   if (!response.ok)
     throw new ApiError(
       body.message || "Something went wrong. Please try again.",

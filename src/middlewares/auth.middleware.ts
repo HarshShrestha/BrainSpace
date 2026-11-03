@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
-import type { RequestHandler } from "express";
+import mongoose from "mongoose";
+import type { Request, RequestHandler } from "express";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -11,33 +12,42 @@ declare global {
     }
   }
 }
+/** Returns the user ID for a valid, unrevoked session token, or null. */
+export async function sessionUserId(req: Request): Promise<string | null> {
+  const token =
+    req.cookies?.accessToken ||
+    req.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
+  if (!token) return null;
+  const secret = process.env.ACCESS_TOKEN_SECRET;
+  if (!secret || secret.length < 32) return null;
+  let payload: string | jwt.JwtPayload;
+  try {
+    payload = jwt.verify(token, secret);
+  } catch {
+    return null;
+  }
+  if (
+    typeof payload === "string" ||
+    typeof payload._id !== "string" ||
+    !mongoose.isObjectIdOrHexString(payload._id) ||
+    typeof payload.sv !== "number"
+  )
+    return null;
+  const user = await User.findById(payload._id).select("+tokenVersion");
+  return user && user.tokenVersion === payload.sv ? payload._id : null;
+}
 export const verifyJWT: RequestHandler = asyncHandler(
   async (req, _res, next) => {
-    const token =
+    const hasToken = Boolean(
       req.cookies?.accessToken ||
-      req.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
-    if (!token) throw new ApiError(401, "Please sign in");
-    let id: string;
-    let version: number;
-    try {
-      const secret = process.env.ACCESS_TOKEN_SECRET;
-      if (!secret || secret.length < 32)
-        throw new Error("Invalid token configuration");
-      const payload = jwt.verify(token, secret);
-      if (
-        typeof payload === "string" ||
-        typeof payload._id !== "string" ||
-        typeof payload.sv !== "number"
-      )
-        throw new Error("Invalid payload");
-      id = payload._id;
-      version = payload.sv;
-    } catch {
-      throw new ApiError(401, "Invalid or expired session");
-    }
-    const user = await User.findById(id).select("+tokenVersion");
-    if (!user || user.tokenVersion !== version)
-      throw new ApiError(401, "Invalid or expired session");
+        /^Bearer .+$/i.test(req.get("authorization") || ""),
+    );
+    const id = await sessionUserId(req);
+    if (!id)
+      throw new ApiError(
+        401,
+        hasToken ? "Invalid or expired session" : "Please sign in",
+      );
     req.userId = id;
     next();
   },
