@@ -18,8 +18,7 @@ if (process.env.RAG_ENABLED !== "true" || !process.env.GEMINI_API_KEY) {
 process.env.ACCESS_TOKEN_SECRET =
   "isolated-evaluation-secret-at-least-32-characters";
 const { app } = await import("../dist/app.js");
-const { Content } = await import("../dist/models/content.model.js");
-const { runWorker } = await import("../dist/services/rag/worker.js");
+const { retrieve } = await import("../dist/services/rag/assistant.service.js");
 const fixture = JSON.parse(
   await readFile("tests/fixtures/rag-eval.json", "utf8"),
 );
@@ -32,6 +31,7 @@ try {
     .post("/api/auth/signup")
     .send({ username: "rageval", password: "temporary-evaluation-password" });
   if (signup.status !== 201) throw new Error(`Signup failed: ${signup.status}`);
+  const userId = signup.body.data.id;
   for (const source of fixture.sources) {
     const created = await client.post("/api/content").send({
       title: source.title,
@@ -51,25 +51,10 @@ try {
         `Index failed for ${source.id}: ${indexed.status} ${indexed.body.message || ""}`,
       );
   }
-  const docs = await Content.find({}).select("title link rag").lean();
-  const candidates = [];
-  for (const d of docs)
-    for (const chunk of d.rag.chunks)
-      candidates.push({
-        id: `S${candidates.length + 1}`,
-        contentId: d._id.toString(),
-        title: d.title,
-        link: d.link,
-        text: chunk.text,
-        embedding: chunk.embedding,
-      });
   const results = [];
   for (const q of fixture.questions) {
     const start = performance.now();
-    const ids = await runWorker("evaluate_retrieval", {
-      question: q.question,
-      candidates,
-    });
+    const ids = (await retrieve(userId, q.question)).map((c) => c.contentId);
     const retrieved = [...new Set(ids.map((id) => lookup.get(id)))];
     const relevant = q.relevant;
     const response = await client

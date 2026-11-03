@@ -13,7 +13,7 @@ class RetrievalTests(unittest.TestCase):
         self.assertTrue(all(0 < len(chunk) <= 180 for chunk in chunks))
         self.assertEqual(chunks[0][-15:], chunks[1][15:30])
 
-    def test_retrieval_and_exact_citations(self):
+    def test_exact_citations(self):
         sources = [
             {
                 "id": "S1",
@@ -22,8 +22,6 @@ class RetrievalTests(unittest.TestCase):
             },
             {"id": "S2", "text": "Music has rhythm.", "embedding": [0, 1]},
         ]
-        self.assertEqual(retrieval.retrieve([1, 0], sources, 1)[0]["id"], "S1")
-        self.assertEqual(retrieval.retrieve([-1, 0], sources), [])
         self.assertTrue(
             retrieval.validate_evidence(
                 [{"id": "S1", "quote": "largest known animal"}], sources
@@ -120,16 +118,11 @@ class RetrievalTests(unittest.TestCase):
             "evidence": [{"id": "S1", "quote": "A sufficiently long quotation."}],
         },
     )
-    @patch("rag.worker.embed", return_value=[[1, 0]])
     @patch.dict("os.environ", {"RAG_ENABLED": "true", "GEMINI_API_KEY": "test-only"})
-    def test_rejects_unsupported_answers(self, _embed, _generate, _verify):
-        candidate = {
-            "id": "S1",
-            "text": "A sufficiently long quotation.",
-            "embedding": [1, 0],
-        }
+    def test_rejects_unsupported_answers(self, _generate, _verify):
+        candidate = {"id": "S1", "text": "A sufficiently long quotation."}
         self.assertTrue(
-            worker.ask({"question": "question?", "candidates": [candidate]})[
+            worker.answer({"question": "question?", "candidates": [candidate]})[
                 "abstained"
             ]
         )

@@ -5,7 +5,7 @@ import sys
 from .errors import RagError
 from .extraction import fetch_public_text
 from .provider import config, embed, generate, verify
-from .retrieval import chunk_text, retrieve, validate_evidence
+from .retrieval import chunk_text, validate_evidence
 
 ABSTAIN = {
     "answer": "I couldn’t find enough reliable evidence in your indexed sources to answer that. Try another question or index a relevant source.",
@@ -32,12 +32,14 @@ def index(payload):
     }
 
 
-def ask(payload):
+def embed_query(payload):
+    return embed([payload["question"]], "RETRIEVAL_QUERY")[0]
+
+
+def answer(payload):
+    """Answer from the excerpts the API already retrieved; abstain unless quotes verify."""
     config()
-    candidates = payload["candidates"]
-    if not candidates:
-        return ABSTAIN
-    selected = retrieve(embed([payload["question"]], "RETRIEVAL_QUERY")[0], candidates)
+    selected = payload["candidates"]
     if not selected:
         return ABSTAIN
     result = generate(payload["question"], selected)
@@ -71,13 +73,10 @@ def dispatch(data):
     operation, payload = data["operation"], data["payload"]
     if operation == "index":
         return index(payload)
-    if operation == "ask":
-        return ask(payload)
-    if operation == "evaluate_retrieval":
-        return [
-            c["contentId"]
-            for c in retrieve(embed([payload["question"]], "RETRIEVAL_QUERY")[0], payload["candidates"])
-        ]
+    if operation == "embed_query":
+        return embed_query(payload)
+    if operation == "answer":
+        return answer(payload)
     raise RagError(400, "Invalid AI operation")
 
 

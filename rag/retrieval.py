@@ -1,6 +1,5 @@
-"""Bounded chunking, vector retrieval, and exact-quote validation."""
+"""Bounded chunking and exact-quote validation. Vector scoring lives in the API (src/services/rag/retrieval.ts)."""
 
-import math
 import re
 
 
@@ -18,24 +17,6 @@ def chunk_text(text, size=1000, overlap=150):
             break
         start = max(start + 1, end - overlap)
     return chunks
-
-
-def cosine(a, b):
-    if not a or len(a) != len(b):
-        return -1
-    dot = sum(x * y for x, y in zip(a, b))
-    aa = sum(x * x for x in a)
-    bb = sum(y * y for y in b)
-    return dot / math.sqrt(aa * bb) if aa and bb else -1
-
-
-def retrieve(vector, candidates, limit=5, threshold=0.35):
-    scored = [(cosine(vector, c["embedding"]), c) for c in candidates]
-    scored = [
-        pair for pair in scored if math.isfinite(pair[0]) and pair[0] >= threshold
-    ]
-    scored.sort(key=lambda pair: pair[0], reverse=True)
-    return [c for _, c in scored[:limit]]
 
 
 def validate_evidence(evidence, candidates):
