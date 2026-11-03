@@ -20,6 +20,9 @@ All endpoints return `{ success, data }` on success or `{ success: false, messag
 | DELETE | `/api/content/:id` | Delete own item |
 | POST, DELETE | `/api/share` | Rotate/create or revoke own share token |
 | GET | `/api/share/:token` | Public read-only shared collection |
+| GET | `/api/assistant/status` | Configured status and indexed/compatible source counts |
+| POST, DELETE | `/api/assistant/index/:id` | Explicitly index or remove the owner’s source index |
+| POST | `/api/assistant/ask` | Answer from the owner’s index with quoted sources or abstain |
 | GET | `/api/health` | Process liveness (not a database health check) |
 
 Allowed content types: `article`, `video`, `audio`, `image`. Links must use HTTP(S); tags are normalized to lowercase. Lists are currently unpaginated, in line with the source product notes. Avoid logging URLs containing share tokens. The public link exposes the owner's username and all content, including tags; revocation immediately stops access.
@@ -39,3 +42,7 @@ npm run test:e2e                  # built app, isolated DB and browser
 ```
 
 Recoil 0.7.7's peer range permits React 18; this project pins React 18.3.1 rather than assuming React 19 compatibility. Recoil's ecosystem is mature and should be reviewed before any major React upgrade; replacing it requires an explicit product decision.
+
+## AI retrieval
+
+The opt-in RAG pipeline is in `src/services/rag/`: safe public page extraction, overlapping chunking, OpenAI embeddings, user-scoped cosine retrieval, structured grounded generation, exact-quote validation and a separate model support-check. The source text and vectors are stored under the owning Content record; deleting a source or removing its index removes them from the live database. The frontend provides explicit consent and shows source quotations. Follow [RAG_EVALUATION.md](RAG_EVALUATION.md) before claiming quality or enabling production usage. No provider key belongs in frontend code.

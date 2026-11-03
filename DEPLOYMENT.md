@@ -16,6 +16,10 @@ This guide describes the implemented Node/Express API, MongoDB database and stat
 | `PORT` | backend | Defaults to `8000`. Bind/route privately at the infrastructure layer. |
 | `CORS_ORIGIN` | backend | Required in production. Exact public frontend origin, e.g. `https://brain.example.com`; comma-separated if multiple trusted origins. No trailing slash. |
 | `TRUST_PROXY_HOPS` | backend | Optional integer 1–10; set only to the exact count of trusted reverse proxies. Used for client IP/rate limiting; incorrect values permit spoofing or overly broad throttling. |
+| `RAG_ENABLED` | backend | Optional; `true` explicitly enables AI indexing and chat. Default off. |
+| `OPENAI_API_KEY` | backend | Required when AI is enabled; secret manager only, never frontend. |
+| `OPENAI_EMBEDDING_MODEL` | backend | Optional; default `text-embedding-3-small`. Changing it requires reindexing. |
+| `OPENAI_CHAT_MODEL` | backend | Optional; default `gpt-4o-mini`; must support Chat Completions structured outputs. |
 | `VITE_API_URL` | frontend build | Optional; defaults to `/api`. Build-time and public, never a secret. Prefer the same-origin default. |
 
 Use a secret manager to generate/store the token secret, for example `openssl rand -hex 32`. Never paste actual secrets into documentation. MongoDB credentials and token secrets must not be in the built frontend.
@@ -78,3 +82,9 @@ Models create unique indexes on usernames, tag titles, share hashes and share ow
 Monitor process restarts, API error rates, database connections/storage, backup success and certificate expiration. Login rate limiting is in-memory per process, not distributed; use a shared rate-limit store or edge protection before running multiple instances. There is no password-reset flow or multi-factor authentication. Logout invalidates all sessions for that user. Share tokens should never appear in logs. Establish alert thresholds and incident-response ownership before production use.
 
 To roll back, restore the previously tested application artifact/commit and its matching environment configuration, restart the service, and check health and critical workflows. Do not blindly restore an old database over newer user data. If a schema/data migration was performed, follow its tested rollback plan or restore a backup only after evaluating data loss and obtaining authorization. Rotating the signing key invalidates all sessions; rotating a share link invalidates the previous link.
+
+## 7. Optional AI search
+
+AI is off by default. Before enabling it, review provider data-handling terms, user consent, spending limits and [RAG_EVALUATION.md](RAG_EVALUATION.md). Set the variables in the backend secret manager and allow outbound HTTPS to the OpenAI API; source fetching also needs outbound HTTP(S) to publicly accessible pages. Prevent access to private, loopback, link-local and cloud-metadata addresses at the network layer as defense in depth; the application validates and pins DNS addresses on each redirect, but should not be the only network control. Do not log prompts, source text, bearer keys, or share tokens. Source excerpts and questions are transmitted to OpenAI; an index stores source chunks and embeddings in MongoDB. Backups retain them until their retention period expires, even if a live index is removed.
+
+The current index is limited to 250 indexed sources per account and performs in-process cosine ranking, not a scalable vector database. Protect the service from abuse and configure distributed quotas/monitoring before multi-instance or high-volume deployment; the built-in AI rate limit is per-process. Changing the embedding model makes existing indexes incompatible until individually reindexed. There is no automatic refresh of changed websites, transcription, OCR, PDF parsing, or private-site authentication. Treat an unreachable/unsupported source as a request for pasted text, never as verified content. Real model accuracy, production network policy, data retention and costs need staging verification before rollout.

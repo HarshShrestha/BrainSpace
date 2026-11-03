@@ -4,7 +4,7 @@
 
 - **API:** Vitest, Supertest and `mongodb-memory-server` in `tests/api.test.ts`, exercising real Express handlers and MongoDB. Tests cover account creation and login, invalid inputs, authorization/owner isolation, content creation/list/deletion, link rotation/revocation, public retrieval, origin rejection and session invalidation.
 - **Frontend:** Vitest, jsdom and React Testing Library in `frontend/src/**/*.test.tsx` cover content form submission/error/escape, list/empty/delete behavior and authentication-driven Recoil updates.
-- **Browser:** `tests/e2e.mjs` uses Playwright, the built frontend, the built API and an isolated temporary MongoDB. It exercises registration, saving, search, read-only sharing, revocation, deletion, logout/login and a mobile-width overflow check. The screenshots in `docs/screenshots` were generated from this isolated test. Set `SCREENSHOT_DIR=docs/screenshots` when deliberately refreshing them; normal test runs do not alter tracked screenshots.
+- **Browser:** `tests/e2e.mjs` uses Playwright, the built frontend, the built API and an isolated temporary MongoDB. It exercises registration, saving, indexing, cited chat, index removal, search, read-only sharing, revocation, deletion, logout/login and a mobile-width overflow check. The OpenAI HTTP calls are intercepted by a test-only stub; no real provider is tested. The screenshots in `docs/screenshots` were generated from this isolated test. Set `SCREENSHOT_DIR=docs/screenshots` when deliberately refreshing them; normal test runs do not alter tracked screenshots.
 
 ## Commands
 
@@ -30,3 +30,7 @@ The MongoDB test server can download a MongoDB binary the first time and needs s
 ## Expectations and known gaps
 
 New behavior should include focused success, invalid-input, authorization and error cases. Run the full commands above before release. There is no enforced numerical coverage threshold yet; coverage is not equivalent to security assurance. Tests do not yet include exhaustive keyboard/screen-reader audits, large-scale performance tests, real external hosted MongoDB, real TLS/reverse-proxy infrastructure, or all browser engines. The browser test checks one desktop and one mobile viewport; manual accessibility and cross-browser checks are still recommended.
+
+## RAG evaluation
+
+`npm test` includes deterministic retrieval, evidence validation, public-address blocking, mocked-provider contract tests, and authenticated/isolated RAG API tests. These are automated regression checks, **not** proof of answer quality with a real model. The optional `npm run eval:rag` uses a small labelled synthetic set and real billable model calls only when explicitly enabled with `RAG_EVAL_ALLOW_PAID=true`; no live model evaluation has been run by default. See [RAG_EVALUATION.md](RAG_EVALUATION.md) for setup, metrics, limitations and a production evaluation plan. Frontend tests use mocked API responses and do not establish real provider compatibility.

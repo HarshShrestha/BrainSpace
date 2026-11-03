@@ -10,7 +10,7 @@ A quiet place for the links and ideas you want to keep. BrainSpace brings articl
 
 </details>
 
-Screenshots use sample data created by the automated browser test.
+Screenshots use sample data and a test-only AI provider stub from the automated browser test.
 
 ## Features
 
@@ -18,9 +18,10 @@ Screenshots use sample data created by the automated browser test.
 - Save HTTP(S) links with a title, type and optional tags; browse, search and filter them.
 - Remove saved items. Each account can access only its own collection.
 - Create a revocable, read-only link to your entire collection. Anyone possessing the link can view it; creating a new one invalidates the old one.
+- Ask questions over explicitly indexed sources, with quotations, links and a conservative evidence check.
 - Responsive interface, keyboard-accessible dialogs, loading, empty and error states.
 
-Search currently matches saved titles, URLs and tags in the browser; it does not index the contents of external pages. Semantic/embedding search is a possible future enhancement, not an implemented feature. Editing saved items, password recovery and collections are not currently implemented.
+The standard search filters saved titles, URLs and tags locally. Optional AI search uses indexed source text and embeddings; it is disabled until configured. AI answers may still be wrong: check their quoted evidence. Editing saved items, password recovery and collections are not currently implemented.
 
 ## Stack and architecture
 
@@ -46,6 +47,10 @@ npm --prefix frontend run dev
 ```
 
 Visit `http://localhost:5173` and create an account. Set `PORT`, `CORS_ORIGIN`, or the optional `TRUST_PROXY_HOPS` on the backend as needed; the default Vite dev proxy expects port 8000. For other deployments, the frontend's optional build-time `VITE_API_URL` defaults to `/api`.
+
+## Optional AI search
+
+Set `RAG_ENABLED=true` and a server-side `OPENAI_API_KEY` in `.env`. The default embedding and chat models can be configured via `OPENAI_EMBEDDING_MODEL` and `OPENAI_CHAT_MODEL`; see [RAG_EVALUATION.md](RAG_EVALUATION.md). Restart the API, save a link, choose **Index for AI**, and explicitly consent before indexing. Leave the text field blank to fetch an accessible public HTML/text page, or paste text/transcripts. Then ask a question in **Ask your space**. Indexing and questions send text to OpenAI and may incur charges. The feature will not work without a valid key and network access; it is off by default.
 
 ## Build and test
 
