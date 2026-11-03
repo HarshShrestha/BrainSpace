@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useRecoilState } from "recoil";
-import { api, ApiError } from "./services/api";
-import { userState } from "./store/state";
+import { useRecoilState, useResetRecoilState } from "recoil";
+import { api, ApiError, setUnauthorizedHandler } from "./services/api";
+import { contentState, userState } from "./store/state";
 import { Auth } from "./features/auth/Auth";
 import { Workspace } from "./features/content/Workspace";
 import { SharedPage } from "./features/share/SharedPage";
@@ -10,6 +10,13 @@ export default function App() {
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [attempt, setAttempt] = useState(0);
+  const resetContent = useResetRecoilState(contentState);
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null);
+      resetContent();
+    });
+  }, [setUser, resetContent]);
   const match = window.location.pathname.match(
     /^\/shared\/([A-Za-z0-9_-]+)\/?$/,
   );

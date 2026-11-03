@@ -16,7 +16,8 @@ export const create = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: { token } });
 });
 export const revoke = asyncHandler(async (req, res) => {
-  await Link.deleteOne({ userId: req.userId! });
+  if (!(await Link.deleteOne({ userId: req.userId! })).deletedCount)
+    throw new ApiError(404, "You don't have an active share link");
   res.json({ success: true, data: null });
 });
 export const view = asyncHandler(async (req, res) => {

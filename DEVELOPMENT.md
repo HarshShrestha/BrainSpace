@@ -37,7 +37,7 @@ For a feature: define and validate the API contract, add a service or model as n
 npm run dev                       # backend watch mode
 npm --prefix frontend run dev     # frontend dev server
 npm run build && npm test         # backend compile and integration tests
-npm run test:rag                  # Python retrieval and safety tests
+npm run test:rag                  # Python extraction, citation and safety tests
 npm --prefix frontend run build && npm --prefix frontend test
 npm run test:e2e                  # built app, isolated DB and browser
 ```
@@ -46,7 +46,7 @@ Recoil 0.7.7's peer range permits React 18; this project pins React 18.3.1 rathe
 
 ## AI retrieval
 
-The opt-in RAG pipeline lives in `rag/` (Python standard library): safe public page extraction, overlapping chunking, Gemini embeddings, cosine retrieval, structured grounded generation, exact-quote validation and a separate model support-check. Express authenticates users and scopes MongoDB reads and writes in `src/services/rag/assistant.service.ts`, then starts a private Python subprocess over stdin/stdout through `worker.ts`; no additional network port is exposed. Start the API from the repository root so Python can import the `rag` package. Set `RAG_PYTHON` to the Python 3.10+ executable if `python3` is not on PATH. The source text and vectors are stored under the owning Content record; deleting a source or removing its index removes them from the live database. Existing MongoDB index format is unchanged. The frontend provides explicit consent and shows source quotations. The assistant opens as the main workspace, with saved sources and indexing controls in the sidebar; Google Material Symbols are self-hosted in `frontend/src/assets` with their license. Follow [RAG_EVALUATION.md](RAG_EVALUATION.md) before claiming quality or enabling production usage. No provider key belongs in frontend code.
+The opt-in RAG pipeline lives in `rag/` (Python standard library): safe public page extraction, overlapping chunking, Gemini embeddings, structured grounded generation, exact-quote validation and a separate model support-check. Express authenticates users and scopes MongoDB reads and writes in `src/services/rag/assistant.service.ts`. To answer a question it asks the worker to embed the question, streams the user's stored chunks from MongoDB, ranks them by cosine similarity in `src/services/rag/retrieval.ts`, and sends only the top five excerpts (without vectors) back to the worker for generation. Each worker call starts a private Python subprocess over stdin/stdout through `worker.ts`; no additional network port is exposed. Start the API from the repository root so Python can import the `rag` package. Set `RAG_PYTHON` to the Python 3.10+ executable if `python3` is not on PATH. The source text and vectors are stored under the owning Content record; deleting a source or removing its index removes them from the live database. Existing MongoDB index format is unchanged. The frontend provides explicit consent and shows source quotations. The assistant opens as the main workspace, with saved sources and indexing controls in the sidebar; Google Material Symbols are self-hosted in `frontend/src/assets` with their license. Follow [RAG_EVALUATION.md](RAG_EVALUATION.md) before claiming quality or enabling production usage. No provider key belongs in frontend code.
 
 ## Folders and shared spaces
 

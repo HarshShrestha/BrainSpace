@@ -336,7 +336,13 @@ export function Workspace() {
                 </p>
               </div>
               <div className="drive-count">
-                <strong>{String(items.length).padStart(2, "0")}</strong>
+                <strong>
+                  {String(
+                    view === "folder"
+                      ? items.filter((i) => i.folderId === activeFolder).length
+                      : items.length,
+                  ).padStart(2, "0")}
+                </strong>
                 <span>ITEMS SAVED</span>
               </div>
             </div>

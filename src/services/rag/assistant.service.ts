@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Content } from "../../models/content.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { runWorker } from "./worker.js";
+import { cosine, TopK } from "./retrieval.js";
 
 const abstention = {
   answer:
@@ -79,34 +80,52 @@ export async function removeIndex(userId: string, id: string) {
   );
   if (!result.matchedCount) throw new ApiError(404, "Content not found");
 }
-export async function ask(userId: string, question: string) {
+type Candidate = {
+  id: string;
+  contentId: string;
+  title: string;
+  link: string;
+  text: string;
+  sourceType?: "page" | "pasted";
+  indexedAt?: Date;
+};
+/** Embeds the question, then streams the user's chunks and keeps only the best matches. */
+export async function retrieve(userId: string, question: string) {
   const model = embeddingModel();
-  const documents = await Content.find({
+  const filter = {
     userId,
     "rag.indexedAt": { $exists: true },
     "rag.model": model,
-  })
-    .select("title link rag")
-    .lean();
-  if (!documents.length) return abstention;
-  if (documents.length > 250)
+  };
+  const total = await Content.countDocuments(filter);
+  if (!total) return [];
+  if (total > 250)
     throw new ApiError(
       400,
       "Too many indexed sources; remove or reconfigure the index before searching.",
     );
-  const candidates = [];
-  for (const item of documents)
+  const vector = await runWorker<number[]>("embed_query", { question });
+  const best = new TopK<Omit<Candidate, "id">>();
+  const cursor = Content.find(filter)
+    .select("title link rag")
+    .lean()
+    .cursor({ batchSize: 10 });
+  for await (const item of cursor)
     for (const chunk of item.rag?.chunks || [])
-      candidates.push({
-        id: `S${candidates.length + 1}`,
+      best.offer(cosine(vector, chunk.embedding), {
         contentId: item._id.toString(),
         title: item.title,
         link: item.link,
         text: chunk.text,
-        embedding: chunk.embedding,
         ...(item.rag?.sourceType ? { sourceType: item.rag.sourceType } : {}),
         ...(item.rag?.indexedAt ? { indexedAt: item.rag.indexedAt } : {}),
       });
+  return best
+    .results()
+    .map((candidate, i): Candidate => ({ id: `S${i + 1}`, ...candidate }));
+}
+export async function ask(userId: string, question: string) {
+  const candidates = await retrieve(userId, question);
   if (!candidates.length) return abstention;
-  return runWorker("ask", { question, candidates });
+  return runWorker("answer", { question, candidates });
 }

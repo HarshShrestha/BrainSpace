@@ -23,8 +23,8 @@ export async function addContent(
   const tags = await Promise.all(
     [...new Set(data.tags)].map((title) =>
       Tag.findOneAndUpdate(
-        { title },
-        { $setOnInsert: { title } },
+        { userId, title },
+        { $setOnInsert: { userId, title } },
         { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       ),
     ),
@@ -63,5 +63,13 @@ export async function moveContent(
     .populate("tags", "title")
     .lean();
   if (!item) throw new ApiError(404, "Content not found");
+  // The folder may have been deleted between the check above and the write.
+  if (folderId && !(await Folder.exists({ _id: folderId, userId }))) {
+    await Content.updateOne(
+      { _id: id, userId, folderId },
+      { $set: { folderId: null } },
+    );
+    throw new ApiError(404, "Folder not found");
+  }
   return item;
 }
