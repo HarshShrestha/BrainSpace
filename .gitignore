@@ -23,3 +23,8 @@ CLAUDE.md
 PROJECT_ANALYSIS.md
 .agent/
 .codex/
+
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+.venv/

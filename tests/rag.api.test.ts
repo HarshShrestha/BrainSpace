@@ -1,34 +1,9 @@
-import { beforeAll, afterAll, describe, it, expect, vi } from "vitest";
+import { beforeAll, afterAll, describe, it, expect } from "vitest";
+import path from "node:path";
 import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import request from "supertest";
-vi.mock("../src/services/rag/provider.js", () => ({
-  ragConfiguration: () => {
-    if (process.env.RAG_ENABLED !== "true")
-      throw Object.assign(new Error("AI search is not configured"), {
-        statusCode: 503,
-      });
-    return { embeddingModel: "test-model" };
-  },
-  embed: async (texts: string[]) =>
-    texts.map((t) => (t.includes("unrelated question") ? [0, 1] : [1, 0])),
-  generate: async (
-    question: string,
-    sources: { id: string; text: string }[],
-  ) => ({
-    answer: "The project uses blue cards.",
-    evidence: [
-      {
-        id: sources[0]!.id,
-        quote: question.includes("invent")
-          ? "This quotation is fabricated."
-          : "The project uses blue cards for each source.",
-      },
-    ],
-  }),
-  verify: async (question: string) => !question.includes("unsupported"),
-}));
 import { app } from "../src/app.js";
 let mongo: MongoMemoryServer | undefined;
 const alice = request.agent(app),
@@ -39,6 +14,7 @@ const fact =
     3,
   );
 beforeAll(async () => {
+  process.env.PYTHONPATH = path.resolve("tests/python_stubs");
   process.env.ACCESS_TOKEN_SECRET =
     "test-only-secret-with-at-least-32-characters";
   process.env.RAG_ENABLED = "true";
@@ -56,11 +32,12 @@ afterAll(async () => {
     await mongoose.connection.dropDatabase();
   await mongoose.disconnect();
   await mongo?.stop();
+  delete process.env.PYTHONPATH;
   delete process.env.RAG_ENABLED;
   delete process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_EMBEDDING_MODEL;
 });
-describe("RAG API integration (provider stub only)", () => {
+describe("RAG API integration (Python pipeline, provider stub only)", () => {
   it("authenticates users and requires explicit indexing consent", async () => {
     expect(
       (
@@ -76,14 +53,12 @@ describe("RAG API integration (provider stub only)", () => {
       .post("/api/auth/signup")
       .send({ username: "ragbob", password: "correct horse battery" });
     id = (
-      await alice
-        .post("/api/content")
-        .send({
-          title: "Design notes",
-          link: "https://example.com",
-          type: "article",
-          tags: [],
-        })
+      await alice.post("/api/content").send({
+        title: "Design notes",
+        link: "https://example.com",
+        type: "article",
+        tags: [],
+      })
     ).body.data._id;
     expect(
       (await alice.post(`/api/assistant/index/${id}`).send({ text: fact }))
@@ -96,6 +71,18 @@ describe("RAG API integration (provider stub only)", () => {
           .send({ consent: true, text: fact })
       ).status,
     ).toBe(404);
+  });
+  it("returns a safe error when Python is unavailable", async () => {
+    process.env.RAG_PYTHON = "/definitely/missing/python3";
+    try {
+      const result = await alice
+        .post(`/api/assistant/index/${id}`)
+        .send({ consent: true, text: fact });
+      expect(result.status).toBe(503);
+      expect(result.body.message).toMatch(/Python AI service is unavailable/);
+    } finally {
+      delete process.env.RAG_PYTHON;
+    }
   });
   it("indexes user-supplied text without exposing vectors through content list or sharing", async () => {
     const result = await alice

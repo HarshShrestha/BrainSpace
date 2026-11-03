@@ -19,8 +19,7 @@ process.env.ACCESS_TOKEN_SECRET =
   "isolated-evaluation-secret-at-least-32-characters";
 const { app } = await import("../dist/app.js");
 const { Content } = await import("../dist/models/content.model.js");
-const { embed } = await import("../dist/services/rag/provider.js");
-const { retrieve } = await import("../dist/services/rag/retrieval.js");
+const { runWorker } = await import("../dist/services/rag/worker.js");
 const fixture = JSON.parse(
   await readFile("tests/fixtures/rag-eval.json", "utf8"),
 );
@@ -34,14 +33,12 @@ try {
     .send({ username: "rageval", password: "temporary-evaluation-password" });
   if (signup.status !== 201) throw new Error(`Signup failed: ${signup.status}`);
   for (const source of fixture.sources) {
-    const created = await client
-      .post("/api/content")
-      .send({
-        title: source.title,
-        link: `https://example.com/${source.id}`,
-        type: "article",
-        tags: [],
-      });
+    const created = await client.post("/api/content").send({
+      title: source.title,
+      link: `https://example.com/${source.id}`,
+      type: "article",
+      tags: [],
+    });
     if (created.status !== 201)
       throw new Error(`Create failed: ${created.status}`);
     const id = created.body.data._id;
@@ -69,11 +66,11 @@ try {
   const results = [];
   for (const q of fixture.questions) {
     const start = performance.now();
-    const [vector] = await embed([q.question]);
-    const selected = retrieve(vector, candidates);
-    const retrieved = [
-      ...new Set(selected.map((c) => lookup.get(c.contentId))),
-    ];
+    const ids = await runWorker("evaluate_retrieval", {
+      question: q.question,
+      candidates,
+    });
+    const retrieved = [...new Set(ids.map((id) => lookup.get(id)))];
     const relevant = q.relevant;
     const response = await client
       .post("/api/assistant/ask")
