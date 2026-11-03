@@ -2,7 +2,7 @@
 
 ## Enable it
 
-1. Run MongoDB and the BrainSpace API/frontend as described in README.md.
+1. Install Python 3.10+ (no additional Python packages are needed), and run MongoDB and the BrainSpace API/frontend from the repository root as described in README.md. If needed, set `RAG_PYTHON` to the absolute Python executable path on the backend.
 2. In the **backend** `.env` or secret manager set:
 
 ```dotenv
@@ -14,22 +14,22 @@ OPENAI_CHAT_MODEL=gpt-4o-mini
 
 The key requires an OpenAI account with access to the selected models, available billing/quota, and network access to `https://api.openai.com`. The model must support Chat Completions structured outputs. Keep the key out of Git, logs, browser code and chat. The two model settings are optional with the shown defaults. After editing the environment, restart the API. Changing the embedding model requires reindexing each source.
 3. Save a link. On its card choose **Index for AI**. Paste at least 80 characters of source text, or leave the box empty to fetch a publicly accessible HTML/plain-text page. Read the privacy notice and explicitly consent. The first 24,000 characters are chunked and embedded. Restricted pages, PDFs, images, audio and video are not parsed/transcribed; paste their text or transcript instead. User content, questions and retrieved excerpts are sent to OpenAI and incur usage charges. Indexing is not automatic.
-4. Ask a question in **Ask your space**. Review the linked sources and quotations; pasted text is labelled and is not verified against the linked page. Extracted content can also become stale; each question is independent, so the chatbot does not resolve follow-up references from earlier messages. Click **Reindex for AI** to refresh changed text or **Remove AI index** to remove indexed chunks/vectors while retaining the saved link. Deleting the link also deletes its live index.
+4. Open the floating chat button and ask a question in **Ask your space**. Review the linked sources and quotations; pasted text is labelled and is not verified against the linked page. Extracted content can also become stale; each question is independent, so the chatbot does not resolve follow-up references from earlier messages. Click **Reindex for AI** to refresh changed text or **Remove AI index** to remove indexed chunks/vectors while retaining the saved link. Deleting the link also deletes its live index.
 
 ## How it works
 
-Each authenticated user can only index and retrieve their own content. Public page retrieval permits only HTTP(S) on standard ports, validates all DNS answers, pins the connection to a public address and revalidates each redirect. It caps response size and time. An external egress firewall is still required for defense in depth. HTML extraction is best effort, with no JavaScript execution or authenticated browsing.
+The Python RAG worker handles extraction, chunking, embeddings, retrieval, generation and evidence checks. The authenticated Express API scopes MongoDB reads and writes by user and starts the worker through private stdin/stdout; there is no Python HTTP endpoint. Existing indexed data is compatible. Each authenticated user can only index and retrieve their own content. Public page retrieval permits only HTTP(S) on standard ports, validates all DNS answers, pins the connection to a public address and revalidates each redirect. It caps response size and time. An external egress firewall is still required for defense in depth. HTML extraction is best effort, with no JavaScript execution or authenticated browsing.
 
 Text is split into overlapping ~1,000-character chunks. Vectors are stored in the owning content document. Retrieval ranks by cosine similarity, selects up to five chunks with a fixed 0.35 threshold, then asks the chat model to use only those excerpts. The server rejects answers without matching verbatim quotes and asks the model in a separate call to check whether the quotes support the answer. If retrieval, citation validation or support checks fail, the assistant abstains. A provider error is shown rather than fabricated into an answer.
 
 **These measures reduce risk; they do not guarantee truth, completeness, prompt-injection immunity or zero hallucinations.** The checker can make mistakes, the sources themselves can be inaccurate, and exact quotes do not prove entailment. Users should verify citations, especially for consequential decisions. Model output is displayed as text, not executed. Do not treat AI as an authority for medical, legal, financial, safety or other high-stakes decisions.
 
-The implementation is deliberately bounded: 250 indexed sources/account, 24,000 characters/source, 30 chunks/source, in-process ranking, 30 indexing/ask requests per user per 15 minutes **per server process**, and 30-second provider timeouts. The cosine threshold is a starting heuristic, not a calibrated confidence probability. There is no vector database, OCR, transcription, automatic reindexing, chat memory, streaming or distributed quota. Backups may retain deleted data subject to the operator's policy.
+The implementation is deliberately bounded: 250 indexed sources/account, 24,000 characters/source, 30 chunks/source, per-request Python subprocess ranking, 30 indexing/ask requests per user per 15 minutes **per server process**, 30-second provider timeouts, and a 120-second overall worker deadline. The cosine threshold is a starting heuristic, not a calibrated confidence probability. There is no vector database, OCR, transcription, automatic reindexing, chat memory, streaming or distributed quota. Backups may retain deleted data subject to the operator's policy.
 
 ## Test without provider charges
 
 ```bash
-npm run build && npm test
+npm run build && npm test && npm run test:rag
 npm --prefix frontend run build && npm --prefix frontend test
 ```
 

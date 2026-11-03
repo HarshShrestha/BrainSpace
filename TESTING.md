@@ -4,7 +4,7 @@
 
 - **API:** Vitest, Supertest and `mongodb-memory-server` in `tests/api.test.ts`, exercising real Express handlers and MongoDB. Tests cover account creation and login, invalid inputs, authorization/owner isolation, content creation/list/deletion, link rotation/revocation, public retrieval, origin rejection and session invalidation.
 - **Frontend:** Vitest, jsdom and React Testing Library in `frontend/src/**/*.test.tsx` cover content form submission/error/escape, list/empty/delete behavior and authentication-driven Recoil updates.
-- **Browser:** `tests/e2e.mjs` uses Playwright, the built frontend, the built API and an isolated temporary MongoDB. It exercises registration, saving, indexing, cited chat, index removal, search, read-only sharing, revocation, deletion, logout/login and a mobile-width overflow check. The OpenAI HTTP calls are intercepted by a test-only stub; no real provider is tested. The screenshots in `docs/screenshots` were generated from this isolated test. Set `SCREENSHOT_DIR=docs/screenshots` when deliberately refreshing them; normal test runs do not alter tracked screenshots.
+- **Browser:** `tests/e2e.mjs` uses Playwright, the built frontend, the built API and an isolated temporary MongoDB. It exercises registration, saving, indexing, cited chat, index removal, search, read-only sharing, revocation, deletion, logout/login and a mobile-width overflow check. Python OpenAI HTTP calls are intercepted by a test-only stub; no real provider is tested. The screenshots in `docs/screenshots` were generated from this isolated test. Set `SCREENSHOT_DIR=docs/screenshots` when deliberately refreshing them; normal test runs do not alter tracked screenshots.
 
 ## Commands
 
@@ -13,6 +13,7 @@ npm ci
 npm --prefix frontend ci
 npm run build
 npm test
+npm run test:rag
 npm --prefix frontend run build
 npm --prefix frontend test
 npx playwright install chromium
@@ -33,4 +34,4 @@ New behavior should include focused success, invalid-input, authorization and er
 
 ## RAG evaluation
 
-`npm test` includes deterministic retrieval, evidence validation, public-address blocking, mocked-provider contract tests, and authenticated/isolated RAG API tests. These are automated regression checks, **not** proof of answer quality with a real model. The optional `npm run eval:rag` uses a small labelled synthetic set and real billable model calls only when explicitly enabled with `RAG_EVAL_ALLOW_PAID=true`; no live model evaluation has been run by default. See [RAG_EVALUATION.md](RAG_EVALUATION.md) for setup, metrics, limitations and a production evaluation plan. Frontend tests use mocked API responses and do not establish real provider compatibility.
+`npm run test:rag` runs Python standard-library unit tests for retrieval, citations, address filtering and provider validation. `npm test` runs authenticated/isolated API integration tests against the actual Python subprocess with a test-only provider stub. These are automated regression checks, **not** proof of answer quality with a real model. The optional `npm run eval:rag` uses a small labelled synthetic set and real billable model calls only when explicitly enabled with `RAG_EVAL_ALLOW_PAID=true`; no live model evaluation has been run by default. See [RAG_EVALUATION.md](RAG_EVALUATION.md) for setup, metrics, limitations and a production evaluation plan. Frontend tests use mocked API responses and do not establish real provider compatibility.

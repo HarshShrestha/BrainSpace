@@ -25,11 +25,11 @@ The standard search filters saved titles, URLs and tags locally. Optional AI sea
 
 ## Stack and architecture
 
-React 18, TypeScript, Vite and Recoil in `frontend/`; TypeScript, Express, Mongoose and MongoDB in `src/`. A same-origin reverse proxy serves the frontend and routes `/api` to the API. Authentication uses bcrypt and a signed, HTTP-only cookie. MongoDB holds users, content, tags and hashed sharing tokens. See [DEVELOPMENT.md](DEVELOPMENT.md).
+React 18, TypeScript, Vite and Recoil in `frontend/`; TypeScript, Express, Mongoose and MongoDB in `src/`; and Python for the RAG pipeline in `rag/`. A same-origin reverse proxy serves the frontend and routes `/api` to the API. Authentication uses bcrypt and a signed, HTTP-only cookie. MongoDB holds users, content, tags and hashed sharing tokens. See [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Local setup
 
-Prerequisites: Node.js 22.12+ and npm, and a running MongoDB instance. From the repository root:
+Prerequisites: Node.js 22.12+ and npm, Python 3.10+ for AI search and its tests, and a running MongoDB instance. The Python pipeline uses only the standard library. From the repository root:
 
 ```bash
 npm ci
@@ -50,12 +50,12 @@ Visit `http://localhost:5173` and create an account. Set `PORT`, `CORS_ORIGIN`, 
 
 ## Optional AI search
 
-Set `RAG_ENABLED=true` and a server-side `OPENAI_API_KEY` in `.env`. The default embedding and chat models can be configured via `OPENAI_EMBEDDING_MODEL` and `OPENAI_CHAT_MODEL`; see [RAG_EVALUATION.md](RAG_EVALUATION.md). Restart the API, save a link, choose **Index for AI**, and explicitly consent before indexing. Leave the text field blank to fetch an accessible public HTML/text page, or paste text/transcripts. Then ask a question in **Ask your space**. Indexing and questions send text to OpenAI and may incur charges. The feature will not work without a valid key and network access; it is off by default.
+Set `RAG_ENABLED=true` and a server-side `OPENAI_API_KEY` in `.env`. The default embedding and chat models can be configured via `OPENAI_EMBEDDING_MODEL` and `OPENAI_CHAT_MODEL`; see [RAG_EVALUATION.md](RAG_EVALUATION.md). Restart the API, save a link, choose **Index for AI**, and explicitly consent before indexing. Leave the text field blank to fetch an accessible public HTML/text page, or paste text/transcripts. Open the floating **Ask your space** button to ask a question. Indexing and questions send text to OpenAI and may incur charges. The feature will not work without a valid key and network access; it is off by default.
 
 ## Build and test
 
 ```bash
-npm run build && npm test
+npm run build && npm test && npm run test:rag
 npm --prefix frontend run build && npm --prefix frontend test
 npx playwright install chromium  # one-time, if Chromium is not already available
 npm run test:e2e

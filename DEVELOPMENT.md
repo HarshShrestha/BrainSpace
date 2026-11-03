@@ -29,7 +29,7 @@ Allowed content types: `article`, `video`, `audio`, `image`. Links must use HTTP
 
 ## Workflow and conventions
 
-Install and run commands are in [README.md](README.md). Branch from the current main branch, make a focused change, run the relevant suites, inspect the diff and commit a coherent milestone. Keep source code in TypeScript, prefer small domain-oriented components, keep network requests in `services/api.ts`, validate untrusted inputs at API boundaries, and scope every private database query to the authenticated user. Do not use Redux. Recoil atoms hold the current user and content list; local ephemeral form/dialog state stays local. Make writes through the API and update atom state only after success.
+Install and run commands are in [README.md](README.md). Branch from the current main branch, make a focused change, run the relevant suites, inspect the diff and commit a coherent milestone. Keep application/API code in TypeScript and RAG pipeline code in Python; prefer small domain-oriented components, keep network requests in `services/api.ts`, validate untrusted inputs at API boundaries, and scope every private database query to the authenticated user. Do not use Redux. Recoil atoms hold the current user and content list; local ephemeral form/dialog state stays local. Make writes through the API and update atom state only after success.
 
 For a feature: define and validate the API contract, add a service or model as needed, add the API route and owner checks, connect the frontend service and components, and test success, errors and authorization. Add new environment variables to `.env.example` and document them in the deployment guide. Never store secrets in source or the frontend. Keep tests near frontend components and in `tests/` for API/browser workflows.
 
@@ -37,6 +37,7 @@ For a feature: define and validate the API contract, add a service or model as n
 npm run dev                       # backend watch mode
 npm --prefix frontend run dev     # frontend dev server
 npm run build && npm test         # backend compile and integration tests
+npm run test:rag                  # Python retrieval and safety tests
 npm --prefix frontend run build && npm --prefix frontend test
 npm run test:e2e                  # built app, isolated DB and browser
 ```
@@ -45,4 +46,4 @@ Recoil 0.7.7's peer range permits React 18; this project pins React 18.3.1 rathe
 
 ## AI retrieval
 
-The opt-in RAG pipeline is in `src/services/rag/`: safe public page extraction, overlapping chunking, OpenAI embeddings, user-scoped cosine retrieval, structured grounded generation, exact-quote validation and a separate model support-check. The source text and vectors are stored under the owning Content record; deleting a source or removing its index removes them from the live database. The frontend provides explicit consent and shows source quotations. Follow [RAG_EVALUATION.md](RAG_EVALUATION.md) before claiming quality or enabling production usage. No provider key belongs in frontend code.
+The opt-in RAG pipeline lives in `rag/` (Python standard library): safe public page extraction, overlapping chunking, OpenAI embeddings, cosine retrieval, structured grounded generation, exact-quote validation and a separate model support-check. Express authenticates users and scopes MongoDB reads and writes in `src/services/rag/assistant.service.ts`, then starts a private Python subprocess over stdin/stdout through `worker.ts`; no additional network port is exposed. Start the API from the repository root so Python can import the `rag` package. Set `RAG_PYTHON` to the Python 3.10+ executable if `python3` is not on PATH. The source text and vectors are stored under the owning Content record; deleting a source or removing its index removes them from the live database. Existing MongoDB index format is unchanged. The frontend provides explicit consent and shows source quotations. The floating assistant uses a non-modal dialog; Google Material Symbols are self-hosted in `frontend/src/assets` with their license. Follow [RAG_EVALUATION.md](RAG_EVALUATION.md) before claiming quality or enabling production usage. No provider key belongs in frontend code.

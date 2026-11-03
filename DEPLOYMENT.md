@@ -1,10 +1,10 @@
 # Deployment guide
 
-This guide describes the implemented Node/Express API, MongoDB database and static Vite frontend. No production infrastructure is provisioned by this repository. The recommended initial topology is one HTTPS hostname, with a reverse proxy serving `frontend/dist` and forwarding `/api/` to one private Node process on port 8000. MongoDB should be a private, backed-up managed service or a separately secured instance. Keeping frontend and API on the same origin is important for the HTTP-only `SameSite=Lax` session cookie; cross-site hosting is not supported by the default cookie configuration.
+This guide describes the implemented Node/Express API, MongoDB database and static Vite frontend. No production infrastructure is provisioned by this repository. The recommended initial topology is one HTTPS hostname, with a reverse proxy serving `frontend/dist` and forwarding `/api/` to one private Node process on port 8000. When AI is enabled, Node starts a local Python subprocess for each RAG request; no Python HTTP listener is required. MongoDB should be a private, backed-up managed service or a separately secured instance. Keeping frontend and API on the same origin is important for the HTTP-only `SameSite=Lax` session cookie; cross-site hosting is not supported by the default cookie configuration.
 
 ## 1. Prepare services and secrets
 
-- Provision Node.js 22.12+ and MongoDB compatible with Mongoose 9; restrict database network access to the backend host and create a least-privilege database user with TLS enabled for remote connections. Enable backups and test restoring them.
+- Provision Node.js 22.12+, Python 3.10+ (standard library only) and MongoDB compatible with Mongoose 9; restrict database network access to the backend host and create a least-privilege database user with TLS enabled for remote connections. Enable backups and test restoring them.
 - Choose a DNS hostname and provision HTTPS. Keep Node and MongoDB off the public internet; expose only ports 80/443 on the reverse proxy.
 - Store environment variables in the host's secret manager or service environment, not in the repository, logs or frontend bundle:
 
@@ -16,6 +16,7 @@ This guide describes the implemented Node/Express API, MongoDB database and stat
 | `PORT` | backend | Defaults to `8000`. Bind/route privately at the infrastructure layer. |
 | `CORS_ORIGIN` | backend | Required in production. Exact public frontend origin, e.g. `https://brain.example.com`; comma-separated if multiple trusted origins. No trailing slash. |
 | `TRUST_PROXY_HOPS` | backend | Optional integer 1–10; set only to the exact count of trusted reverse proxies. Used for client IP/rate limiting; incorrect values permit spoofing or overly broad throttling. |
+| `RAG_PYTHON` | backend | Optional absolute path to the Python 3.10+ executable; defaults to `python3`. |
 | `RAG_ENABLED` | backend | Optional; `true` explicitly enables AI indexing and chat. Default off. |
 | `OPENAI_API_KEY` | backend | Required when AI is enabled; secret manager only, never frontend. |
 | `OPENAI_EMBEDDING_MODEL` | backend | Optional; default `text-embedding-3-small`. Changing it requires reindexing. |
@@ -36,7 +37,7 @@ npm --prefix frontend run build
 NODE_ENV=production npm start
 ```
 
-Use a process manager or hosting service to run `node dist/index.js` with the environment above, restart on failure, and retain structured deployment logs without secrets or share tokens. The API exits if the token secret is weak, the production CORS origin is missing, or MongoDB cannot connect. Configure health checks at `/api/health`; this is a liveness endpoint, not a database connectivity guarantee. Probe an authenticated data workflow separately.
+Use a process manager or hosting service to run `node dist/index.js` with its working directory set to the repository root (so `python -m rag.worker` can locate the Python package), with the environment above, restart on failure, and retain structured deployment logs without secrets or share tokens. The API exits if the token secret is weak, the production CORS origin is missing, or MongoDB cannot connect. Configure health checks at `/api/health`; this is a liveness endpoint, not a database connectivity guarantee. Probe an authenticated data workflow separately.
 
 ## 3. Route traffic and configure HTTPS
 
@@ -87,4 +88,4 @@ To roll back, restore the previously tested application artifact/commit and its 
 
 AI is off by default. Before enabling it, review provider data-handling terms, user consent, spending limits and [RAG_EVALUATION.md](RAG_EVALUATION.md). Set the variables in the backend secret manager and allow outbound HTTPS to the OpenAI API; source fetching also needs outbound HTTP(S) to publicly accessible pages. Prevent access to private, loopback, link-local and cloud-metadata addresses at the network layer as defense in depth; the application validates and pins DNS addresses on each redirect, but should not be the only network control. Do not log prompts, source text, bearer keys, or share tokens. Source excerpts and questions are transmitted to OpenAI; an index stores source chunks and embeddings in MongoDB. Backups retain them until their retention period expires, even if a live index is removed.
 
-The current index is limited to 250 indexed sources per account and performs in-process cosine ranking, not a scalable vector database. Protect the service from abuse and configure distributed quotas/monitoring before multi-instance or high-volume deployment; the built-in AI rate limit is per-process. Changing the embedding model makes existing indexes incompatible until individually reindexed. There is no automatic refresh of changed websites, transcription, OCR, PDF parsing, or private-site authentication. Treat an unreachable/unsupported source as a request for pasted text, never as verified content. Real model accuracy, production network policy, data retention and costs need staging verification before rollout.
+The current index is limited to 250 indexed sources per account and performs per-request Python-process cosine ranking, not a scalable vector database. Protect the service from abuse and configure distributed quotas/monitoring before multi-instance or high-volume deployment; the built-in AI rate limit is per-process. Changing the embedding model makes existing indexes incompatible until individually reindexed. There is no automatic refresh of changed websites, transcription, OCR, PDF parsing, or private-site authentication. Treat an unreachable/unsupported source as a request for pasted text, never as verified content. Real model accuracy, production network policy, data retention and costs need staging verification before rollout.
