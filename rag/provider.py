@@ -1,4 +1,4 @@
-"""OpenAI integration; never logs prompts, content, or credentials."""
+"""Gemini REST integration; never logs prompts, content, or credentials."""
 
 import json
 import math
@@ -9,24 +9,24 @@ from .errors import RagError
 
 
 def config():
-    key = os.getenv("OPENAI_API_KEY", "").strip()
+    key = os.getenv("GEMINI_API_KEY", "").strip()
     if os.getenv("RAG_ENABLED") != "true" or not key:
         raise RagError(
             503, "AI search is not configured. Ask the administrator to enable it."
         )
     return (
         key,
-        os.getenv("OPENAI_EMBEDDING_MODEL") or "text-embedding-3-small",
-        os.getenv("OPENAI_CHAT_MODEL") or "gpt-4o-mini",
+        os.getenv("GEMINI_EMBEDDING_MODEL") or "gemini-embedding-001",
+        os.getenv("GEMINI_CHAT_MODEL") or "gemini-3.8-flash",
     )
 
 
 def request(path, body):
     key, _, _ = config()
     req = urllib.request.Request(
-        "https://api.openai.com/v1/" + path,
+        "https://generativelanguage.googleapis.com/v1beta/models/" + path,
         data=json.dumps(body).encode(),
-        headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+        headers={"x-goog-api-key": key, "Content-Type": "application/json"},
         method="POST",
     )
     try:
@@ -46,23 +46,20 @@ def request(path, body):
         raise RagError(502, "AI provider returned an invalid response") from None
 
 
-def embed(texts):
+def embed(texts, task="RETRIEVAL_DOCUMENT"):
     _, model, _ = config()
-    data = request("embeddings", {"model": model, "input": texts})
+    if not model.replace("-", "").replace(".", "").replace("_", "").isalnum():
+        raise RagError(503, "Invalid embedding model configuration")
+    data = request(model + ":batchEmbedContents", {
+        "requests": [{"model": "models/" + model, "content": {"parts": [{"text": text}]},
+                      "taskType": task, "outputDimensionality": 768} for text in texts]
+    })
     try:
-        rows = sorted(data["data"], key=lambda x: x["index"])
-        vectors = [row["embedding"] for row in rows]
-        if [row["index"] for row in rows] != list(range(len(texts))) or any(
-            not isinstance(v, list)
-            or not v
-            or any(
-                not isinstance(n, (int, float))
-                or isinstance(n, bool)
-                or not math.isfinite(n)
-                for n in v
-            )
-            for v in vectors
-        ):
+        vectors = [item["values"] for item in data["embeddings"]]
+        if len(vectors) != len(texts) or any(
+            not isinstance(v, list) or not v or any(
+                not isinstance(n, (int, float)) or isinstance(n, bool) or not math.isfinite(n)
+                for n in v) for v in vectors):
             raise ValueError()
         return vectors
     except (KeyError, TypeError, ValueError):
@@ -71,24 +68,16 @@ def embed(texts):
 
 def structured(name, schema, system, payload):
     _, _, model = config()
-    data = request(
-        "chat/completions",
-        {
-            "model": model,
-            "temperature": 0,
-            "max_tokens": 1000,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": json.dumps(payload)},
-            ],
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {"name": name, "strict": True, "schema": schema},
-            },
-        },
-    )
+    if not model.replace("-", "").replace(".", "").replace("_", "").isalnum():
+        raise RagError(503, "Invalid chat model configuration")
+    data = request(model + ":generateContent", {
+        "systemInstruction": {"parts": [{"text": system}]},
+        "contents": [{"role": "user", "parts": [{"text": json.dumps(payload)}]}],
+        "generationConfig": {"temperature": 0, "maxOutputTokens": 2048,
+            "responseFormat": {"text": {"mimeType": "APPLICATION_JSON", "schema": schema}}},
+    })
     try:
-        return json.loads(data["choices"][0]["message"]["content"])
+        return json.loads(data["candidates"][0]["content"]["parts"][0]["text"])
     except (KeyError, IndexError, TypeError, ValueError):
         raise RagError(502, "AI provider returned an invalid answer") from None
 

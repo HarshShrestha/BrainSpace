@@ -18,8 +18,8 @@ beforeAll(async () => {
   process.env.ACCESS_TOKEN_SECRET =
     "test-only-secret-with-at-least-32-characters";
   process.env.RAG_ENABLED = "true";
-  process.env.OPENAI_API_KEY = "test-only";
-  process.env.OPENAI_EMBEDDING_MODEL = "test-model";
+  process.env.GEMINI_API_KEY = "test-only";
+  process.env.GEMINI_EMBEDDING_MODEL = "test-model";
   const uri =
     process.env.TEST_MONGODB_URI ||
     (mongo = await MongoMemoryServer.create()).getUri();
@@ -34,8 +34,8 @@ afterAll(async () => {
   await mongo?.stop();
   delete process.env.PYTHONPATH;
   delete process.env.RAG_ENABLED;
-  delete process.env.OPENAI_API_KEY;
-  delete process.env.OPENAI_EMBEDDING_MODEL;
+  delete process.env.GEMINI_API_KEY;
+  delete process.env.GEMINI_EMBEDDING_MODEL;
 });
 describe("RAG API integration (Python pipeline, provider stub only)", () => {
   it("authenticates users and requires explicit indexing consent", async () => {

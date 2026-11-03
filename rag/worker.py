@@ -37,7 +37,7 @@ def ask(payload):
     candidates = payload["candidates"]
     if not candidates:
         return ABSTAIN
-    selected = retrieve(embed([payload["question"]])[0], candidates)
+    selected = retrieve(embed([payload["question"]], "RETRIEVAL_QUERY")[0], candidates)
     if not selected:
         return ABSTAIN
     result = generate(payload["question"], selected)
@@ -76,7 +76,7 @@ def dispatch(data):
     if operation == "evaluate_retrieval":
         return [
             c["contentId"]
-            for c in retrieve(embed([payload["question"]])[0], payload["candidates"])
+            for c in retrieve(embed([payload["question"]], "RETRIEVAL_QUERY")[0], payload["candidates"])
         ]
     raise RagError(400, "Invalid AI operation")
 

@@ -11,8 +11,8 @@ if (process.env.RAG_EVAL_ALLOW_PAID !== "true") {
   );
   process.exit(1);
 }
-if (process.env.RAG_ENABLED !== "true" || !process.env.OPENAI_API_KEY) {
-  console.error("Set RAG_ENABLED=true and OPENAI_API_KEY first.");
+if (process.env.RAG_ENABLED !== "true" || !process.env.GEMINI_API_KEY) {
+  console.error("Set RAG_ENABLED=true and GEMINI_API_KEY first.");
   process.exit(1);
 }
 process.env.ACCESS_TOKEN_SECRET =
@@ -115,9 +115,9 @@ try {
       .map(Number);
   const report = {
     note: "Synthetic smoke evaluation, not a production-quality or hallucination-free guarantee. Context precision is relative to labelled relevant sources; keyword checks are not semantic correctness or faithfulness.",
-    model: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
+    model: process.env.GEMINI_CHAT_MODEL || "gemini-3.8-flash",
     embeddingModel:
-      process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small",
+      process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001",
     cases: results.length,
     recallAt5: mean(measured("relevantRetrieval")),
     contextPrecisionAt5: mean(measured("contextPrecision")),

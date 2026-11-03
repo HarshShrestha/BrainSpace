@@ -91,9 +91,9 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(" ".join(parser.text), "Hello  world")
 
     @patch("rag.provider.request")
-    @patch.dict("os.environ", {"RAG_ENABLED": "true", "OPENAI_API_KEY": "test-only"})
+    @patch.dict("os.environ", {"RAG_ENABLED": "true", "GEMINI_API_KEY": "test-only"})
     def test_invalid_vectors_fail_closed(self, request):
-        request.return_value = {"data": [{"index": 0, "embedding": [float("nan")]}]}
+        request.return_value = {"embeddings": [{"values": [float("nan")]}]}
         with self.assertRaises(RagError):
             provider.embed(["hello"])
 
@@ -106,7 +106,7 @@ class RetrievalTests(unittest.TestCase):
         },
     )
     @patch("rag.worker.embed", return_value=[[1, 0]])
-    @patch.dict("os.environ", {"RAG_ENABLED": "true", "OPENAI_API_KEY": "test-only"})
+    @patch.dict("os.environ", {"RAG_ENABLED": "true", "GEMINI_API_KEY": "test-only"})
     def test_rejects_unsupported_answers(self, _embed, _generate, _verify):
         candidate = {
             "id": "S1",

@@ -10,17 +10,17 @@ const abstention = {
   abstained: true,
 };
 function embeddingModel() {
-  if (process.env.RAG_ENABLED !== "true" || !process.env.OPENAI_API_KEY?.trim())
+  if (process.env.RAG_ENABLED !== "true" || !process.env.GEMINI_API_KEY?.trim())
     throw new ApiError(
       503,
       "AI search is not configured. Ask the administrator to enable it.",
     );
-  return process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small";
+  return process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
 }
 export async function status(userId: string) {
   const configured =
     process.env.RAG_ENABLED === "true" &&
-    Boolean(process.env.OPENAI_API_KEY?.trim());
+    Boolean(process.env.GEMINI_API_KEY?.trim());
   const indexed = await Content.countDocuments({
     userId,
     "rag.indexedAt": { $exists: true },
@@ -30,7 +30,7 @@ export async function status(userId: string) {
         userId,
         "rag.indexedAt": { $exists: true },
         "rag.model":
-          process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small",
+          process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001",
       })
     : 0;
   return { configured, indexed, compatible };
